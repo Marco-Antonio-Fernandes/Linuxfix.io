@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissões do cliente Linux do Fix.io",
-  "windows": ["main", "whatsapp"],
+  "windows": ["main"],
   "permissions": ["core:default", "dialog:default"]
 }

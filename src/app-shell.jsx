@@ -20,7 +20,6 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('fixio.sidebar.collapsed') === '1')
   const [applicationStatus, setApplicationStatus] = useState({ state: 'idle', message: '' })
   const [pixToast, setPixToast] = useState(null)
-  const acknowledgementTimer = useRef(null)
   const lastPixNotification = useRef(null)
 
   useEffect(() => {
@@ -29,26 +28,14 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
     const receive = event => {
       const status = event.data
       if (status?.type !== 'desktop-status' || status.target !== 'application') return
-      clearTimeout(acknowledgementTimer.current)
       setApplicationStatus(status)
     }
     webview.addEventListener('message', receive)
     return () => {
       webview.removeEventListener('message', receive)
-      clearTimeout(acknowledgementTimer.current)
     }
   }, [])
 
-  const openApplication = (choose = false) => {
-    if (!desktop || applicationStatus.state === 'busy') return
-    setApplicationStatus({ state: 'busy', message: choose ? 'Escolhendo aplicativo…' : 'Abrindo aplicativo…' })
-    acknowledgementTimer.current = setTimeout(() => setApplicationStatus({ state: 'error', message: 'O aplicativo desktop não respondeu ao atalho. Feche o Fix.io e abra a versão atualizada.' }), 8000)
-    try { window.chrome.webview.postMessage({ type: 'open-application', choose }) }
-    catch (error) {
-      clearTimeout(acknowledgementTimer.current)
-      setApplicationStatus({ state: 'error', message: error.message })
-    }
-  }
   const shareOrder = async () => {
     if (!onShareOrder) return
     try { setApplicationStatus({ state: 'success', message: await onShareOrder() }) }
@@ -88,6 +75,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
         width: Math.max(0, Math.min(rect.right, window.innerWidth) - left),
         height: Math.max(0, window.innerHeight - top),
         viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
         obscured: mobileOpen,
       }
       const serialized = JSON.stringify(bounds)
@@ -116,8 +104,11 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
     window.chrome?.webview?.postMessage({ type: 'navigate', page })
   }, [page])
 
+  useEffect(() => () => {
+    window.chrome?.webview?.postMessage({ type: 'navigate', page: '' })
+  }, [])
+
   const go = nextPage => {
-    if (nextPage === 'whatsapp' && !desktop) window.open('https://web.whatsapp.com/', '_blank', 'noopener,noreferrer')
     setPage(nextPage)
     setMobileOpen(false)
   }
@@ -153,12 +144,10 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
         <div className="breadcrumb"><b>fix.io</b><ChevronRight size={15}/><span>{breadcrumbLabel}</span></div>
         <div className="topbar-actions">
           {page === 'detail' && <button type="button" className="outline topbar-share" onClick={shareOrder} title="Compartilhar OS com o cliente"><Share2 size={16}/><span>Compartilhar OS</span></button>}
-          <button type="button" className="application-shortcut" disabled={!desktop || applicationStatus.state === 'busy'}
-            title={desktop ? 'Abrir ou maximizar aplicativo · botão direito para trocar o executável' : 'Atalho disponível no aplicativo Windows'}
-            aria-label="Abrir ou maximizar aplicativo"
-            aria-busy={applicationStatus.state === 'busy'}
-            onClick={() => openApplication()}
-            onContextMenu={event => { event.preventDefault(); openApplication(true) }}>
+          <button type="button" className="application-shortcut" disabled={!desktop}
+            title="Ir para a bancada"
+            aria-label="Ir para a bancada"
+            onClick={() => go('techunion')}>
             <MonitorPlay size={20}/>
           </button>
           <button type="button" className={notifications?.unread_count ? 'topbar-message has-unread' : 'topbar-message'} onClick={() => { go('whatsapp'); onOpenWhatsApp() }} title="Abrir WhatsApp">

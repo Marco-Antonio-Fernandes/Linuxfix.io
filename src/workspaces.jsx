@@ -302,16 +302,11 @@ export function CustomerPortalEnhanced({ cpf, onLogout }) {
     event.preventDefault()
     const message = body.trim()
     if (!message || !order) return
-    const popup = window.open('about:blank', 'fixio-whatsapp', 'popup=yes,width=760,height=820,resizable=yes,scrollbars=yes')
     try {
       await api(`/api/public/portal/cpf/${encodeURIComponent(cpf)}/messages`, { method: 'POST', body: JSON.stringify({ body: message, serviceOrderId: order.id }) })
-      const configuredNumber = String(import.meta.env.VITE_COMPANY_WHATSAPP || '44991445590').replace(/\D/g, '')
-      const number = configuredNumber.startsWith('55') ? configuredNumber : `55${configuredNumber}`
-      const url = number ? `https://wa.me/${number}?text=${encodeURIComponent(message)}` : `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`
-      if (popup) popup.location.href = url
-      else setNotice('O navegador bloqueou a nova janela do WhatsApp. Permita pop-ups para abrir o WhatsApp ao lado sem sair desta OS.')
+      setNotice('Mensagem enviada à assistência pelo portal.')
       setBody(''); await load()
-    } catch (e) { if (popup) popup.close(); setError(e.message) }
+    } catch (e) { setError(e.message) }
   }
   if (error) return <main className="customer-portal"><div className="portal-brand"><ShieldCheck size={19} />fix<span>.io</span></div><article className="portal-card"><AlertTriangle size={28} /><h1>Não foi possível consultar</h1><p className="muted">{error}</p><button className="outline" onClick={load}>Tentar novamente</button></article></main>
   if (!data) return <main className="customer-portal"><div className="portal-brand"><ShieldCheck size={19} />fix<span>.io</span></div><article className="portal-card"><p className="muted">Carregando seus atendimentos…</p></article></main>
