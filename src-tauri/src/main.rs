@@ -5,7 +5,7 @@ compile_error!("O cliente Fix.io Linux deve ser compilado no Linux.");
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{env, fs, path::{Path, PathBuf}, process::Command};
+use std::{env, fs, path::PathBuf, process::Command};
 use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 use tauri::webview::{Webview, WebviewBuilder};
 
@@ -177,7 +177,7 @@ fn open_whatsapp(app: &tauri::AppHandle) -> Result<()> {
             Ok(())
         }
         Err(error) => {
-            let window = WebviewWindowBuilder::new(&app, "whatsapp", whatsapp_url()?)
+            let window = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
                 .title("Fix.io · WhatsApp Web")
                 .inner_size(1100.0, 760.0)
                 .min_inner_size(720.0, 520.0)
