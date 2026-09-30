@@ -173,6 +173,10 @@ fn launch_wine(app: &tauri::AppHandle, state: &UiState, target: &str, executable
     let wine = wine_command()?;
     let mut command = Command::new(wine);
     command.arg(&executable);
+    command.env("WINEDEBUG", "-all");
+    if let Some(directory) = executable.parent().filter(|path| path.is_dir()) {
+        command.current_dir(directory);
+    }
     if let Some(prefix) = prefix.filter(|value| !value.trim().is_empty()) {
         let prefix = expand(&prefix);
         if !prefix.is_absolute() {
