@@ -240,6 +240,35 @@ fn place_whatsapp_window(main: &tauri::Window, window: &tauri::WebviewWindow) ->
     Ok(())
 }
 
+fn can_embed_child_webview() -> bool {
+    // Tauri's multi-webview child path uses X11 on Linux. A Wayland session can
+    // still provide XWayland through DISPLAY; a pure Wayland session cannot use
+    // this path safely, so use a normal WebKitGTK window instead of overflowing
+    // over the Fix.io layout.
+    env::var_os("WAYLAND_DISPLAY").is_none()
+        || (env::var_os("DISPLAY").is_some() && env::var("GDK_BACKEND").as_deref() == Ok("x11"))
+}
+
+fn open_whatsapp_window(app: &tauri::AppHandle, main: &tauri::Window) -> Result<()> {
+    let webview_data = data_dir()?.join("webview/whatsapp");
+    fs::create_dir_all(&webview_data)
+        .map_err(|error| format!("Não foi possível preparar o perfil do WhatsApp: {error}"))?;
+    let window = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
+        .title("Fix.io · WhatsApp Web")
+        .user_agent(WHATSAPP_USER_AGENT)
+        .data_directory(webview_data)
+        .parent(main)
+        .inner_size(900.0, 680.0)
+        .min_inner_size(720.0, 520.0)
+        .visible(false)
+        .build()
+        .map_err(|error| format!("Não foi possível criar a janela WebKitGTK do WhatsApp: {error}"))?;
+    place_whatsapp_window(main, &window)?;
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 fn open_whatsapp(app: &tauri::AppHandle, bounds: Option<ContentBounds>) -> Result<()> {
     let main = app.get_window("main").ok_or("Janela principal não encontrada.")?;
     if let Some(webview) = app.get_webview("whatsapp") {
@@ -259,6 +288,10 @@ fn open_whatsapp(app: &tauri::AppHandle, bounds: Option<ContentBounds>) -> Resul
         return Ok(());
     }
 
+    if !can_embed_child_webview() {
+        return open_whatsapp_window(app, &main);
+    }
+
     let webview_data = data_dir()?.join("webview/whatsapp");
     fs::create_dir_all(&webview_data).map_err(|error| format!("Não foi possível preparar o perfil do WhatsApp: {error}"))?;
     let builder = WebviewBuilder::new("whatsapp", whatsapp_url()?)
@@ -276,19 +309,8 @@ fn open_whatsapp(app: &tauri::AppHandle, bounds: Option<ContentBounds>) -> Resul
             Ok(())
         }
         Err(error) => {
-            let window = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
-                .title("Fix.io · WhatsApp Web")
-                .user_agent(WHATSAPP_USER_AGENT)
-                .data_directory(data_dir()?.join("webview/whatsapp"))
-                .inner_size(900.0, 680.0)
-                .min_inner_size(720.0, 520.0)
-                .visible(false)
-                .build()
-                .map_err(|fallback| format!("WebView filha indisponível ({error}); fallback também falhou: {fallback}"))?;
-            place_whatsapp_window(&main, &window)?;
-            window.show().map_err(|error| error.to_string())?;
-            window.set_focus().map_err(|error| error.to_string())?;
-            Ok(())
+            open_whatsapp_window(app, &main)
+                .map_err(|fallback| format!("WebView filha indisponível ({error}); fallback também falhou: {fallback}"))
         }
     }
 }
