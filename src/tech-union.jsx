@@ -53,7 +53,7 @@ export function TechUnionWorkspace() {
     <div className="tech-union-toolbar">
       <div><h1><MonitorPlay size={22}/>Bancada</h1><p role="status">{desktop ? status.message : 'Disponível no cliente Fix.io Linux.'}</p></div>
       <div className="tech-union-actions">
-        <button className="outline" disabled={!desktop || starting} onClick={() => command('techunion-open')}><RefreshCw size={15}/>{status.state === 'external' ? 'Usar nesta tela' : 'Tentar novamente'}</button>
+        <button className="outline" disabled={!desktop || starting} onClick={() => command('techunion-open')}><RefreshCw size={15}/>Usar nesta tela</button>
         <button className="outline" disabled={!desktop || starting} onClick={() => command('techunion-external')}><ExternalLink size={15}/>Abrir em janela própria</button>
         <button className="outline" disabled={!desktop || starting} onClick={() => command('techunion-choose')} title="Escolher outro executável"><FolderOpen size={15}/><span>Escolher executável</span></button>
       </div>
@@ -61,7 +61,7 @@ export function TechUnionWorkspace() {
     <div ref={viewport} className="tech-union-viewport">
       <div className="tech-union-placeholder">
         <MonitorPlay size={40}/>
-        <h2>{status.state === 'error' ? 'Não foi possível exibir a janela' : status.state === 'external' ? 'Aberto em janela própria' : 'Área da bancada'}</h2>
+        <h2>{status.state === 'error' ? 'Não foi possível executar o programa' : status.state === 'external' ? 'Programa aberto em janela própria' : 'Área da bancada'}</h2>
         <p>{desktop ? status.message : 'Abra o cliente Fix.io Linux para utilizar o executável via Wine.'}</p>
         {status.state === 'waiting' && <small>O programa selecionado será iniciado pelo Wine em uma janela própria.</small>}
       </div>

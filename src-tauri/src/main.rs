@@ -5,7 +5,12 @@ compile_error!("O cliente Fix.io Linux deve ser compilado no Linux.");
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{env, fs, path::PathBuf, process::Command, sync::Mutex};
+use std::{
+    env, fs,
+    path::PathBuf,
+    process::Command,
+    sync::{Arc, Mutex},
+};
 use tauri::{Emitter, LogicalPosition, LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 use tauri::webview::{Webview, WebviewBuilder};
 
@@ -27,8 +32,17 @@ struct UiSnapshot {
     whatsapp_bounds: Option<ContentBounds>,
 }
 
+struct TrackedWineProcess {
+    executable: PathBuf,
+    pid: u32,
+    running: bool,
+}
+
 #[derive(Default)]
-struct UiState(Mutex<UiSnapshot>);
+struct UiState {
+    snapshot: Mutex<UiSnapshot>,
+    wine_processes: Arc<Mutex<Vec<TrackedWineProcess>>>,
+}
 
 fn content_bounds(message: &Value) -> Option<ContentBounds> {
     let bounds = ContentBounds {
@@ -126,9 +140,34 @@ fn emit_status(app: &tauri::AppHandle, target: &str, state: &str, message: impl 
     })).map_err(|error| error.to_string())
 }
 
-fn launch_wine(app: &tauri::AppHandle, target: &str, executable: PathBuf, prefix: Option<String>) -> Result<u32> {
+fn active_wine_pid(state: &UiState, executable: &PathBuf) -> Result<Option<u32>> {
+    let processes = state.wine_processes.lock().map_err(|error| error.to_string())?;
+    Ok(processes
+        .iter()
+        .find(|process| process.running && process.executable == *executable)
+        .map(|process| process.pid))
+}
+
+fn launch_wine(app: &tauri::AppHandle, state: &UiState, target: &str, executable: PathBuf, prefix: Option<String>) -> Result<u32> {
     if !executable.is_file() {
         return Err(format!("Executável não encontrado: {}", executable.display()));
+    }
+
+    let mut processes = state.wine_processes.lock().map_err(|error| error.to_string())?;
+    processes.retain(|process| process.running);
+    if let Some(process) = processes
+        .iter()
+        .find(|process| process.running && process.executable == executable)
+    {
+        let pid = process.pid;
+        drop(processes);
+        emit_status(
+            app,
+            target,
+            "external",
+            format!("Este programa já está aberto pelo Wine (PID {pid}). Não iniciei outra instância."),
+        )?;
+        return Ok(pid);
     }
 
     let wine = wine_command()?;
@@ -142,13 +181,25 @@ fn launch_wine(app: &tauri::AppHandle, target: &str, executable: PathBuf, prefix
         command.env("WINEPREFIX", prefix);
     }
 
-    let child = command.spawn().map_err(|error| format!("Não foi possível iniciar Wine: {error}"))?;
+    let mut child = command.spawn().map_err(|error| format!("Não foi possível iniciar Wine: {error}"))?;
     let pid = child.id();
-    emit_status(app, target, "external", format!("Programa iniciado pelo Wine (PID {pid}). No Wayland, ele será exibido em uma janela própria."))?;
-    std::thread::spawn(move || {
-        let mut child = child;
-        let _ = child.wait();
+    processes.push(TrackedWineProcess {
+        executable: executable.clone(),
+        pid,
+        running: true,
     });
+    drop(processes);
+
+    let tracked_processes = Arc::clone(&state.wine_processes);
+    std::thread::spawn(move || {
+        let _ = child.wait();
+        if let Ok(mut processes) = tracked_processes.lock() {
+            if let Some(process) = processes.iter_mut().find(|process| process.pid == pid) {
+                process.running = false;
+            }
+        }
+    });
+    emit_status(app, target, "external", format!("Programa iniciado pelo Wine (PID {pid}) em uma janela própria."))?;
     Ok(pid)
 }
 
@@ -249,7 +300,8 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
         "navigate" => {
             let page = message["page"].as_str().unwrap_or_default().to_string();
             let snapshot = {
-                let mut state = app.state::<UiState>().0.lock().map_err(|error| error.to_string())?;
+                let ui_state = app.state::<UiState>();
+                let mut state = ui_state.snapshot.lock().map_err(|error| error.to_string())?;
                 state.active_page = page.clone();
                 state.clone()
             };
@@ -269,9 +321,9 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
                     .map(expand)
                     .is_some_and(|path| path.is_file());
                 let message = if configured {
-                    "Bancada pronta. O programa configurado será executado pelo Wine."
+                    "Bancada pronta. O Wine abre o programa em janela própria; incorporá-lo nesta área ainda não está disponível no cliente Linux."
                 } else {
-                    "Escolha o executável da bancada para iniciar pelo Wine."
+                    "Escolha o executável da bancada. No Linux, ele será aberto em janela própria pelo Wine."
                 };
                 emit_status(&app, "techunion", "ready", message)?;
             } else if let Some(webview) = app.get_webview("whatsapp") {
@@ -283,7 +335,8 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
         "whatsapp-bounds" => {
             if let Some(bounds) = content_bounds(&message) {
                 let active = {
-                    let mut state = app.state::<UiState>().0.lock().map_err(|error| error.to_string())?;
+                    let ui_state = app.state::<UiState>();
+                    let mut state = ui_state.snapshot.lock().map_err(|error| error.to_string())?;
                     state.whatsapp_bounds = Some(bounds);
                     state.active_page == "whatsapp"
                 };
@@ -300,7 +353,35 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
                 }
             }
         }
-        "open-application" | "techunion-open" | "techunion-external" | "techunion-choose" => {
+        "techunion-open" => {
+            let state = app.state::<UiState>();
+            let configured = load_config()
+                .wine_executable
+                .as_deref()
+                .map(expand);
+            let active = configured
+                .as_ref()
+                .map(|path| active_wine_pid(&state, path))
+                .transpose()?;
+            let (status, message) = match active {
+                Some(Some(pid)) => (
+                    "external",
+                    format!(
+                        "O programa continua aberto pelo Wine (PID {pid}). Este cliente Linux ainda não incorpora a janela à área da Bancada; esta ação não iniciou outra instância. Use Alt+Tab ou a barra de tarefas para voltar à janela."
+                    ),
+                ),
+                Some(None) => (
+                    "ready",
+                    "A incorporação de janelas Wine ainda não está implementada neste cliente Linux. Esta ação não iniciou o programa; se ele já estiver aberto, volte à janela pela barra de tarefas ou com Alt+Tab.".into(),
+                ),
+                None => (
+                    "ready",
+                    "A incorporação de janelas Wine ainda não está implementada neste cliente Linux. Esta ação não iniciou o programa; escolha um executável e use ‘Abrir em janela própria’ para executá-lo.".into(),
+                ),
+            };
+            emit_status(&app, "techunion", status, message)?;
+        }
+        "open-application" | "techunion-external" | "techunion-choose" => {
             let target = if kind.starts_with("techunion") { "techunion" } else { "application" };
             emit_status(&app, target, "busy", "Preparando o programa da bancada…")?;
             let choose = kind.ends_with("choose") || message["choose"].as_bool().unwrap_or(false);
@@ -324,12 +405,12 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
             };
             config.wine_executable = Some(executable.to_string_lossy().into_owned());
             save_config(&config)?;
-            if let Err(error) = launch_wine(&app, target, executable, config.wine_prefix) {
+            if let Err(error) = launch_wine(&app, &app.state::<UiState>(), target, executable, config.wine_prefix) {
                 emit_status(&app, target, "error", error)?;
             }
         }
         "whatsapp-retry" => {
-            let snapshot = app.state::<UiState>().0.lock().map_err(|error| error.to_string())?.clone();
+            let snapshot = app.state::<UiState>().snapshot.lock().map_err(|error| error.to_string())?.clone();
             match open_whatsapp(&app, snapshot.whatsapp_bounds) {
                 Ok(()) if snapshot.whatsapp_bounds.is_some() => {
                     emit_status(&app, "whatsapp", "ready", "WhatsApp Web aberto na área de atendimento.")?;
