@@ -11,6 +11,8 @@ use tauri::webview::{Webview, WebviewBuilder};
 
 type Result<T> = std::result::Result<T, String>;
 
+const WHATSAPP_USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct LinuxConfig {
     wine_executable: Option<String>,
@@ -167,8 +169,11 @@ fn open_whatsapp(app: &tauri::AppHandle) -> Result<()> {
         return Ok(());
     }
 
+    let webview_data = data_dir()?.join("webview/whatsapp");
+    fs::create_dir_all(&webview_data).map_err(|error| format!("Não foi possível preparar o perfil do WhatsApp: {error}"))?;
     let builder = WebviewBuilder::new("whatsapp", whatsapp_url()?)
-        .data_directory(data_dir()?.join("webview/whatsapp"));
+        .user_agent(WHATSAPP_USER_AGENT)
+        .data_directory(webview_data);
     match main.add_child(builder, PhysicalPosition::new(0, 0), PhysicalSize::new(1, 1)) {
         Ok(webview) => {
             place_whatsapp_child(&main, &webview)?;
@@ -179,6 +184,7 @@ fn open_whatsapp(app: &tauri::AppHandle) -> Result<()> {
         Err(error) => {
             let window = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
                 .title("Fix.io · WhatsApp Web")
+                .user_agent(WHATSAPP_USER_AGENT)
                 .inner_size(1100.0, 760.0)
                 .min_inner_size(720.0, 520.0)
                 .visible(false)
@@ -198,8 +204,21 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
     match kind {
         "navigate" => {
             if message["page"].as_str() == Some("whatsapp") {
+                emit_status(&app, "whatsapp", "loading", "Abrindo WhatsApp Web pelo WebKitGTK…")?;
                 open_whatsapp(&app)?;
                 emit_status(&app, "whatsapp", "ready", "WhatsApp Web carregado pelo WebKitGTK.")?;
+            } else if message["page"].as_str() == Some("techunion") {
+                let configured = load_config()
+                    .wine_executable
+                    .as_deref()
+                    .map(expand)
+                    .is_some_and(|path| path.is_file());
+                let message = if configured {
+                    "Bancada pronta. O programa configurado será executado pelo Wine."
+                } else {
+                    "Escolha o executável da bancada para iniciar pelo Wine."
+                };
+                emit_status(&app, "techunion", "ready", message)?;
             } else if let Some(webview) = app.get_webview("whatsapp") {
                 let _ = webview.hide();
             } else if let Some(window) = app.get_webview_window("whatsapp") {
@@ -214,7 +233,15 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
             let executable = if choose {
                 choose_executable().await
             } else {
-                config.wine_executable.as_deref().map(expand)
+                let saved = config
+                    .wine_executable
+                    .as_deref()
+                    .map(expand)
+                    .filter(|path| path.is_file());
+                match saved {
+                    Some(path) => Some(path),
+                    None => choose_executable().await,
+                }
             };
             let Some(executable) = executable else {
                 emit_status(&app, target, "error", "Escolha o executável Windows da bancada. Ele será executado pelo Wine.")?;
