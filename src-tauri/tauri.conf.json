@@ -28,7 +28,7 @@
   "bundle": {
     "active": true,
     "targets": ["appimage"],
-    "category": "Office",
+    "category": "Productivity",
     "shortDescription": "Sistema de gerenciamento Fix.io para Linux",
     "longDescription": "Cliente Linux do sistema de gerenciamento de assistência Fix.io.",
     "icon": ["icons/icon.png"]
