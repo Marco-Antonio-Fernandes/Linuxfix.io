@@ -437,6 +437,12 @@ fn close_whatsapp(app: tauri::AppHandle) -> Result<()> {
 }
 
 fn main() {
+    // Tauri's unstable multi-webview child bounds overflow on Wayland with WebKitGTK.
+    // Prefer XWayland for this app when available; child webviews are supported there.
+    if env::var_os("WAYLAND_DISPLAY").is_some() && env::var_os("DISPLAY").is_some() {
+        env::set_var("GDK_BACKEND", "x11");
+    }
+
     tauri::Builder::default()
         .manage(UiState::default())
         .plugin(tauri_plugin_dialog::init())

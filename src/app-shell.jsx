@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Bell, BellRing, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileCode2, LayoutDashboard, Laptop, LogOut, Menu, MessageCircle, MonitorPlay, PanelLeftClose, PanelLeftOpen, Plus, Share2, ShoppingCart, Users, Wrench, X } from 'lucide-react'
+import { Bell, BellRing, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileCode2, LayoutDashboard, Laptop, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Plus, Share2, ShoppingCart, Users, Wrench, X } from 'lucide-react'
 import './app-shell.css'
 
 const navigation = [
@@ -10,7 +10,6 @@ const navigation = [
   ['finance', CircleDollarSign, 'Financeiro'],
   ['inventory', Boxes, 'Estoque'],
   ['whatsapp', MessageCircle, 'WhatsApp'],
-  ['techunion', MonitorPlay, 'Bancada'],
   ['autounattend', FileCode2, 'Auto Atende'],
 ]
 
@@ -20,35 +19,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('fixio.sidebar.collapsed') === '1')
   const [applicationStatus, setApplicationStatus] = useState({ state: 'idle', message: '' })
   const [pixToast, setPixToast] = useState(null)
-  const acknowledgementTimer = useRef(null)
   const lastPixNotification = useRef(null)
-
-  useEffect(() => {
-    const webview = window.chrome?.webview
-    if (!webview) return undefined
-    const receive = event => {
-      const status = event.data
-      if (status?.type !== 'desktop-status' || status.target !== 'application') return
-      clearTimeout(acknowledgementTimer.current)
-      setApplicationStatus(status)
-    }
-    webview.addEventListener('message', receive)
-    return () => {
-      webview.removeEventListener('message', receive)
-      clearTimeout(acknowledgementTimer.current)
-    }
-  }, [])
-
-  const openApplication = (choose = false) => {
-    if (!desktop || applicationStatus.state === 'busy') return
-    setApplicationStatus({ state: 'busy', message: choose ? 'Escolhendo aplicativo…' : 'Abrindo aplicativo…' })
-    acknowledgementTimer.current = setTimeout(() => setApplicationStatus({ state: 'error', message: 'O aplicativo desktop não respondeu ao atalho. Feche o Fix.io e abra a versão atualizada.' }), 8000)
-    try { window.chrome.webview.postMessage({ type: 'open-application', choose }) }
-    catch (error) {
-      clearTimeout(acknowledgementTimer.current)
-      setApplicationStatus({ state: 'error', message: error.message })
-    }
-  }
   const shareOrder = async () => {
     if (!onShareOrder) return
     try { setApplicationStatus({ state: 'success', message: await onShareOrder() }) }
@@ -153,14 +124,6 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
         <div className="breadcrumb"><b>fix.io</b><ChevronRight size={15}/><span>{breadcrumbLabel}</span></div>
         <div className="topbar-actions">
           {page === 'detail' && <button type="button" className="outline topbar-share" onClick={shareOrder} title="Compartilhar OS com o cliente"><Share2 size={16}/><span>Compartilhar OS</span></button>}
-          <button type="button" className="application-shortcut" disabled={!desktop || applicationStatus.state === 'busy'}
-            title={desktop ? 'Abrir ou maximizar aplicativo · botão direito para trocar o executável' : 'Atalho disponível no aplicativo Windows'}
-            aria-label="Abrir ou maximizar aplicativo"
-            aria-busy={applicationStatus.state === 'busy'}
-            onClick={() => openApplication()}
-            onContextMenu={event => { event.preventDefault(); openApplication(true) }}>
-            <MonitorPlay size={20}/>
-          </button>
           <button type="button" className={notifications?.unread_count ? 'topbar-message has-unread' : 'topbar-message'} onClick={() => { go('whatsapp'); onOpenWhatsApp() }} title="Abrir WhatsApp">
             <Bell size={17}/><span>WhatsApp</span>{notifications?.unread_count > 0 && <b>{notifications.unread_count > 99 ? '99+' : notifications.unread_count}</b>}
           </button>
@@ -177,7 +140,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
           <span className="pix-toast-icon"><BellRing size={17} /></span><span><b>Novo Pix identificado</b><small>{pixToast.direction === 'in' ? 'Entrada' : 'Saída'} de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(pixToast.amount_cents) || 0) / 100)} · classifique no Financeiro</small></span><X size={15} onClick={event => { event.stopPropagation(); setPixToast(null) }} />
         </button>}
       </header>
-      <main className={`content${page === 'whatsapp' ? ' whatsapp-content' : page === 'techunion' ? ' tech-union-content' : ''}`}>{children}</main>
+      <main className={`content${page === 'whatsapp' ? ' whatsapp-content' : ''}`}>{children}</main>
     </div>
   </div>
 }
