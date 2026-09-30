@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from 'react'
+import {useEffect,useLayoutEffect,useRef,useState} from 'react'
 import {LayoutDashboard,Users,Laptop,ClipboardList,Plus,ArrowLeft,Save,AlertTriangle,Wrench,ChevronRight,Menu,X,Search,CircleDollarSign,Boxes,LockKeyhole,ArrowUpRight,CheckCircle2,ShieldCheck,MessageCircle,Usb,FileCode2,Bell,MonitorPlay,PlayCircle,Image as ImageIcon} from 'lucide-react'
 import './styles.css'
 import { AppShell } from './app-shell.jsx'
@@ -102,6 +102,7 @@ export default function App(){
 }
 
 function WhatsAppWorkspace(){
+  const viewport=useRef(null)
   const [status,setStatus]=useState({state:'loading',message:'Conectando ao WhatsApp…'})
   useEffect(()=>{
     const bridge=window.chrome?.webview
@@ -112,11 +113,45 @@ function WhatsAppWorkspace(){
     bridge.addEventListener('message',receive)
     return()=>bridge.removeEventListener('message',receive)
   },[])
-  return <section aria-live="polite" className="page-head">
-    <div><p className="eyebrow">ATENDIMENTO</p><h1>WhatsApp</h1>
-      <p className="muted">{window.chrome?.webview ? status.message : 'O WhatsApp usa o WhatsApp Web. Vincule o QR code pelo aplicativo WhatsApp do celular.'}</p>
+  useLayoutEffect(()=>{
+    const bridge=window.chrome?.webview
+    const element=viewport.current
+    if(!bridge||!element)return
+    let frame=0
+    let previous=''
+    const report=()=>{
+      cancelAnimationFrame(frame)
+      frame=requestAnimationFrame(()=>{
+        const rect=element.getBoundingClientRect()
+        if(rect.width<1||rect.height<1)return
+        const bounds={type:'whatsapp-bounds',left:rect.left,top:rect.top,width:rect.width,height:rect.height}
+        const serialized=JSON.stringify(bounds)
+        if(serialized===previous)return
+        previous=serialized
+        bridge.postMessage(bounds)
+      })
+    }
+    const observer=new ResizeObserver(report)
+    observer.observe(element)
+    const area=element.closest('.main-area')
+    if(area)observer.observe(area)
+    window.addEventListener('resize',report)
+    window.addEventListener('scroll',report,true)
+    report()
+    return()=>{
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize',report)
+      window.removeEventListener('scroll',report,true)
+    }
+  },[])
+  return <section className="whatsapp-workspace">
+    <div aria-live="polite" className="whatsapp-workspace-head">
+      <div><p className="eyebrow">ATENDIMENTO</p><h1>WhatsApp</h1>
+      <p className="muted">{window.chrome?.webview ? status.message : 'O WhatsApp usa o WhatsApp Web. Vincule o QR code pelo aplicativo WhatsApp do celular.'}</p></div>
       {status.state==='error'&&<button className="outline" onClick={()=>window.chrome?.webview?.postMessage({type:'whatsapp-retry'})}>Tentar novamente</button>}
     </div>
+    <div ref={viewport} className="whatsapp-webview-host" aria-label="WhatsApp Web" />
   </section>
 }
 

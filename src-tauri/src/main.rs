@@ -5,13 +5,49 @@ compile_error!("O cliente Fix.io Linux deve ser compilado no Linux.");
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{env, fs, path::PathBuf, process::Command};
-use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
+use std::{env, fs, path::PathBuf, process::Command, sync::Mutex};
+use tauri::{Emitter, LogicalPosition, LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 use tauri::webview::{Webview, WebviewBuilder};
 
 type Result<T> = std::result::Result<T, String>;
 
 const WHATSAPP_USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+#[derive(Clone, Copy)]
+struct ContentBounds {
+    left: f64,
+    top: f64,
+    width: f64,
+    height: f64,
+}
+
+#[derive(Default, Clone)]
+struct UiSnapshot {
+    active_page: String,
+    whatsapp_bounds: Option<ContentBounds>,
+}
+
+#[derive(Default)]
+struct UiState(Mutex<UiSnapshot>);
+
+fn content_bounds(message: &Value) -> Option<ContentBounds> {
+    let bounds = ContentBounds {
+        left: message["left"].as_f64()?,
+        top: message["top"].as_f64()?,
+        width: message["width"].as_f64()?,
+        height: message["height"].as_f64()?,
+    };
+    if [bounds.left, bounds.top, bounds.width, bounds.height]
+        .into_iter()
+        .all(f64::is_finite)
+        && bounds.width >= 1.0
+        && bounds.height >= 1.0
+    {
+        Some(bounds)
+    } else {
+        None
+    }
+}
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct LinuxConfig {
@@ -131,14 +167,13 @@ fn whatsapp_url() -> Result<WebviewUrl> {
     ))
 }
 
-fn place_whatsapp_child(main: &tauri::Window, webview: &Webview) -> Result<()> {
-    let size = main.inner_size().map_err(|error| error.to_string())?;
-    let x = ((size.width as f64) * 0.18).min(240.0) as i32;
-    let y = ((size.height as f64) * 0.09).min(82.0) as i32;
-    let width = size.width.saturating_sub(x as u32).saturating_sub(22).max(1);
-    let height = size.height.saturating_sub(y as u32).saturating_sub(20).max(1);
-    webview.set_position(PhysicalPosition::new(x, y)).map_err(|error| error.to_string())?;
-    webview.set_size(PhysicalSize::new(width, height)).map_err(|error| error.to_string())?;
+fn place_whatsapp_child(webview: &Webview, bounds: ContentBounds) -> Result<()> {
+    webview
+        .set_position(LogicalPosition::new(bounds.left, bounds.top))
+        .map_err(|error| error.to_string())?;
+    webview
+        .set_size(LogicalSize::new(bounds.width, bounds.height))
+        .map_err(|error| error.to_string())?;
     Ok(())
 }
 
@@ -154,12 +189,16 @@ fn place_whatsapp_window(main: &tauri::Window, window: &tauri::WebviewWindow) ->
     Ok(())
 }
 
-fn open_whatsapp(app: &tauri::AppHandle) -> Result<()> {
+fn open_whatsapp(app: &tauri::AppHandle, bounds: Option<ContentBounds>) -> Result<()> {
     let main = app.get_window("main").ok_or("Janela principal não encontrada.")?;
     if let Some(webview) = app.get_webview("whatsapp") {
-        place_whatsapp_child(&main, &webview)?;
-        webview.show().map_err(|error| error.to_string())?;
-        webview.set_focus().map_err(|error| error.to_string())?;
+        if let Some(bounds) = bounds {
+            place_whatsapp_child(&webview, bounds)?;
+            webview.show().map_err(|error| error.to_string())?;
+            webview.set_focus().map_err(|error| error.to_string())?;
+        } else {
+            webview.hide().map_err(|error| error.to_string())?;
+        }
         return Ok(());
     }
     if let Some(window) = app.get_webview_window("whatsapp") {
@@ -174,18 +213,23 @@ fn open_whatsapp(app: &tauri::AppHandle) -> Result<()> {
     let builder = WebviewBuilder::new("whatsapp", whatsapp_url()?)
         .user_agent(WHATSAPP_USER_AGENT)
         .data_directory(webview_data);
-    match main.add_child(builder, PhysicalPosition::new(0, 0), PhysicalSize::new(1, 1)) {
+    match main.add_child(builder, LogicalPosition::new(0.0, 0.0), LogicalSize::new(1.0, 1.0)) {
         Ok(webview) => {
-            place_whatsapp_child(&main, &webview)?;
-            webview.show().map_err(|error| error.to_string())?;
-            webview.set_focus().map_err(|error| error.to_string())?;
+            if let Some(bounds) = bounds {
+                place_whatsapp_child(&webview, bounds)?;
+                webview.show().map_err(|error| error.to_string())?;
+                webview.set_focus().map_err(|error| error.to_string())?;
+            } else {
+                webview.hide().map_err(|error| error.to_string())?;
+            }
             Ok(())
         }
         Err(error) => {
             let window = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
                 .title("Fix.io · WhatsApp Web")
                 .user_agent(WHATSAPP_USER_AGENT)
-                .inner_size(1100.0, 760.0)
+                .data_directory(data_dir()?.join("webview/whatsapp"))
+                .inner_size(900.0, 680.0)
                 .min_inner_size(720.0, 520.0)
                 .visible(false)
                 .build()
@@ -203,10 +247,21 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
     let kind = message["type"].as_str().unwrap_or_default();
     match kind {
         "navigate" => {
-            if message["page"].as_str() == Some("whatsapp") {
+            let page = message["page"].as_str().unwrap_or_default().to_string();
+            let snapshot = {
+                let mut state = app.state::<UiState>().0.lock().map_err(|error| error.to_string())?;
+                state.active_page = page.clone();
+                state.clone()
+            };
+            if page == "whatsapp" {
                 emit_status(&app, "whatsapp", "loading", "Abrindo WhatsApp Web pelo WebKitGTK…")?;
-                open_whatsapp(&app)?;
-                emit_status(&app, "whatsapp", "ready", "WhatsApp Web carregado pelo WebKitGTK.")?;
+                match open_whatsapp(&app, snapshot.whatsapp_bounds) {
+                    Ok(()) if snapshot.whatsapp_bounds.is_some() => {
+                        emit_status(&app, "whatsapp", "ready", "WhatsApp Web aberto na área de atendimento.")?;
+                    }
+                    Ok(()) => {}
+                    Err(error) => emit_status(&app, "whatsapp", "error", format!("Não foi possível abrir o WhatsApp Web: {error}"))?,
+                }
             } else if message["page"].as_str() == Some("techunion") {
                 let configured = load_config()
                     .wine_executable
@@ -223,6 +278,26 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
                 let _ = webview.hide();
             } else if let Some(window) = app.get_webview_window("whatsapp") {
                 let _ = window.hide();
+            }
+        }
+        "whatsapp-bounds" => {
+            if let Some(bounds) = content_bounds(&message) {
+                let active = {
+                    let mut state = app.state::<UiState>().0.lock().map_err(|error| error.to_string())?;
+                    state.whatsapp_bounds = Some(bounds);
+                    state.active_page == "whatsapp"
+                };
+                if active {
+                    if let Some(webview) = app.get_webview("whatsapp") {
+                        match place_whatsapp_child(&webview, bounds) {
+                            Ok(()) => {
+                                webview.show().map_err(|error| error.to_string())?;
+                                emit_status(&app, "whatsapp", "ready", "WhatsApp Web aberto na área de atendimento.")?;
+                            }
+                            Err(error) => emit_status(&app, "whatsapp", "error", format!("Não foi possível ajustar a área do WhatsApp: {error}"))?,
+                        }
+                    }
+                }
             }
         }
         "open-application" | "techunion-open" | "techunion-external" | "techunion-choose" => {
@@ -254,8 +329,14 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
             }
         }
         "whatsapp-retry" => {
-            open_whatsapp(&app)?;
-            emit_status(&app, "whatsapp", "ready", "WhatsApp Web carregado pelo WebKitGTK.")?;
+            let snapshot = app.state::<UiState>().0.lock().map_err(|error| error.to_string())?.clone();
+            match open_whatsapp(&app, snapshot.whatsapp_bounds) {
+                Ok(()) if snapshot.whatsapp_bounds.is_some() => {
+                    emit_status(&app, "whatsapp", "ready", "WhatsApp Web aberto na área de atendimento.")?;
+                }
+                Ok(()) => {}
+                Err(error) => emit_status(&app, "whatsapp", "error", format!("Não foi possível abrir o WhatsApp Web: {error}"))?,
+            }
         }
         "notifications-ready" | "content-bounds" | "techunion-bounds" => {}
         _ => {}
@@ -276,6 +357,7 @@ fn close_whatsapp(app: tauri::AppHandle) -> Result<()> {
 
 fn main() {
     tauri::Builder::default()
+        .manage(UiState::default())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![desktop_message, close_whatsapp])
         .run(tauri::generate_context!())
