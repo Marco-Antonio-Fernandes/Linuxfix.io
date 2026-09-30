@@ -1,0 +1,1 @@
+{"identifier":"desktop","description":"Janelas locais do painel e personalização","windows":["main","dock","whatsapp"],"permissions":["core:default","dialog:allow-open"]}

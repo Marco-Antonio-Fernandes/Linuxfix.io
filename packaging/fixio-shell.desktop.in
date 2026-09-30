@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Fixio Shell
+Comment=Painel Linux personalizável para o desktop KDE
+Exec=@EXEC@
+Icon=fixio-shell
+Terminal=false
+Categories=Utility;DesktopSettings;
+StartupNotify=true
