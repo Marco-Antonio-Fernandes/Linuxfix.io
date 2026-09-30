@@ -1,15 +1,25 @@
 {
-  "name": "fixio-shell", "private": true, "version": "0.1.0", "type": "module",
+  "name": "fixio-linux",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "dev": "tauri dev",
     "web:dev": "vite --host 127.0.0.1",
-    "build": "tauri build",
+    "build:web": "vite build",
     "build:linux": "tauri build --bundles appimage",
-    "build:web": "tsc -b && vite build",
-    "preview": "vite preview --host 127.0.0.1",
-    "tauri": "tauri",
-    "test": "vitest run"
+    "build": "npm run build:linux",
+    "preview": "vite preview"
   },
-  "dependencies": { "@tauri-apps/api": "^2.10.0", "@tauri-apps/plugin-dialog": "^2.6.0", "lucide-react": "^0.468.0", "react": "^19.0.0", "react-dom": "^19.0.0" },
-  "devDependencies": { "@tauri-apps/cli": "^2.10.0", "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "@vitejs/plugin-react": "^4.4.0", "typescript": "~5.7.2", "vite": "^6.3.0", "vitest": "^3.2.0" }
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.0",
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0"
+  }
 }

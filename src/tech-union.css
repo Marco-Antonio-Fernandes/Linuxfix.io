@@ -1,0 +1,13 @@
+.app-shell .tech-union-content{max-width:none;width:100%;padding:16px;height:calc(100dvh - 67px);min-height:0;overflow:auto}
+.tech-union-workspace{height:100%;min-height:320px;display:flex;flex-direction:column;gap:12px}
+.tech-union-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0}
+.tech-union-toolbar h1{display:flex;align-items:center;gap:8px;margin:0;font-size:20px}
+.tech-union-toolbar p{margin:5px 0 0;color:#6b7a90;font-size:12px;max-width:650px;overflow-wrap:anywhere}
+.tech-union-actions{display:flex;flex-wrap:wrap;gap:8px}
+.tech-union-actions .outline{padding:9px 11px;font-size:12px}
+.tech-union-actions button:disabled{opacity:.5;cursor:wait}
+.tech-union-viewport{flex:1;min-height:180px;width:100%;background:#f0f3f7;overflow:hidden;outline:1px solid #dae3ed}
+.tech-union-placeholder{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;gap:12px;color:#697a90}
+.tech-union-placeholder h2{margin:0;font-size:18px;color:#283c57}
+.tech-union-placeholder p{margin:0;max-width:560px}
+@media(max-width:750px){.tech-union-actions{width:100%}.tech-union-actions button{flex:1}.app-shell .tech-union-content{padding:12px}}

@@ -1,0 +1,37 @@
+.app-shell .sidebar-collapse{margin-left:auto;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:#aebbd0;cursor:pointer}
+.app-shell .sidebar-collapse:hover{background:#1a2945;color:#fff}
+.app-shell .sidebar.collapsed{width:78px;padding-left:10px;padding-right:10px}
+.app-shell .sidebar.collapsed .brand{justify-content:center;padding-left:0;padding-right:0}
+.app-shell .sidebar.collapsed .brand-label,.app-shell .sidebar.collapsed .nav-group p,.app-shell .sidebar.collapsed .nav-label{display:none}
+.app-shell .sidebar.collapsed .sidebar-collapse{margin-left:0}
+.app-shell .sidebar.collapsed .nav-group button{justify-content:center;padding-left:10px;padding-right:10px}
+.app-shell .main-area.sidebar-collapsed{width:calc(100% - 78px);margin-left:78px}
+.app-shell .topbar-message{position:relative;display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:#6f7c91;font:600 12px 'DM Sans';cursor:pointer;padding:8px 10px;border-radius:7px}
+.app-shell .topbar-message:hover{background:#f0f3f7;color:#24334d}
+.app-shell .topbar-message.has-unread{color:#cf3d3d}
+.app-shell .topbar-actions{display:flex;align-items:center;gap:8px}
+.app-shell .main-area>header{position:sticky;top:0;z-index:3}
+.app-shell .application-shortcut{display:grid;place-items:center;width:36px;height:36px;border:1px solid #dce6ed;border-radius:8px;background:#f5faf9;color:#16846f;cursor:pointer}
+.app-shell .application-shortcut:hover{background:#e4f6f0}
+.app-shell .application-shortcut:disabled{opacity:.45;cursor:not-allowed}
+.app-shell .application-status{order:1;display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;max-width:380px;max-height:55px;overflow:auto;margin:0 12px;padding:6px 10px;background:#f5faf9;border:1px solid #dce6ed;border-radius:8px;font-size:11px}
+.app-shell .topbar-actions{order:2;flex-shrink:0}
+.app-shell .application-status.error{color:#b33232;border-color:#edbaba}
+.app-shell .application-status button{border:0;background:transparent;color:inherit;cursor:pointer;padding:0;display:flex}
+.app-shell .whatsapp-content{max-width:none;width:100%;height:calc(100dvh - 67px);min-height:0;overflow:auto}
+.app-shell .topbar-message.has-unread b{animation:notification-pulse 1.5s ease-out infinite}
+@keyframes notification-pulse{50%{box-shadow:0 0 0 5px #ec665826}}
+@media(prefers-reduced-motion:reduce){.app-shell .topbar-message.has-unread b{animation:none}}
+.app-shell .topbar-message b{min-width:17px;height:17px;padding:0 4px;display:grid;place-items:center;border-radius:9px;background:#ec6658;color:#fff;font-size:9px}
+.app-shell .finance-alert-message{border-color:#efb9b3;background:#fff8f7;color:#c2473d}.app-shell .finance-alert-message svg{color:#d24f45}.app-shell .nav-alert-dot{width:7px;height:7px;margin-left:auto;border-radius:50%;background:#eb5a50;box-shadow:0 0 0 3px #eb5a5026;animation:nav-alert-pulse 1.4s ease-out infinite}@keyframes nav-alert-pulse{50%{box-shadow:0 0 0 6px #eb5a5000}}.app-shell .pix-toast{position:absolute;z-index:8;top:59px;right:31px;display:flex;align-items:flex-start;gap:10px;width:min(390px,calc(100vw - 32px));padding:13px 14px;border:1px solid #f0c5bf;border-radius:11px;background:#fff9f8;color:#26344c;text-align:left;box-shadow:0 14px 35px #26354d20;cursor:pointer}.app-shell .pix-toast-icon{display:grid;place-items:center;width:29px;height:29px;flex:0 0 29px;border-radius:9px;background:#ffe3df;color:#d24e44}.app-shell .pix-toast span:nth-child(2){display:grid;gap:3px;min-width:0}.app-shell .pix-toast b{font-size:12px;color:#8f302c}.app-shell .pix-toast small{color:#718095;font-size:10px;line-height:1.35}.app-shell .pix-toast>svg{margin-left:auto;flex:0 0 auto;color:#a47772}@media(max-width:720px){.app-shell .pix-toast{right:16px}.app-shell .finance-alert-message span{display:none}.app-shell .finance-alert-message{padding:8px}}
+@media(max-width:750px){
+  .app-shell .sidebar.collapsed{width:254px;padding-left:13px;padding-right:13px}
+  .app-shell .sidebar.collapsed .brand{justify-content:flex-start;padding-left:11px;padding-right:11px}
+  .app-shell .sidebar.collapsed .brand-label,.app-shell .sidebar.collapsed .nav-group p,.app-shell .sidebar.collapsed .nav-label{display:block}
+  .app-shell .sidebar.collapsed .sidebar-collapse{margin-left:auto}
+  .app-shell .main-area.sidebar-collapsed{width:100%;margin-left:0}
+  .app-shell .sidebar-collapse{display:none}
+}
+.app-shell .topbar-logout{display:inline-flex!important;visibility:visible!important;padding:8px 10px;font-size:12px;white-space:nowrap}
+.app-shell .sidebar-logout{color:#d3dbea}
+.app-shell .sidebar-logout svg{flex:0 0 auto}

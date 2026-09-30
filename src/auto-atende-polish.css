@@ -1,0 +1,62 @@
+/* Acabamento visual exclusivo do Auto Atende. Mantém os componentes do app, mas evita grids estreitos e controles espremidos. */
+.auto-page-head{gap:22px;margin-bottom:24px;padding-bottom:2px}
+.auto-page-head .muted{max-width:760px;line-height:1.55}
+.auto-head-actions{align-items:center}
+.auto-head-actions button,.auto-bottom-actions button,.auto-add-button{min-height:40px;white-space:nowrap}
+.auto-editor{min-width:0;border-color:#e3e9ee;border-radius:14px;box-shadow:0 10px 30px rgba(23,43,77,.055);background:#fff}
+.auto-sticky-head{margin:0;padding:22px 24px 18px;align-items:center;border-bottom:1px solid #e8eef1;box-shadow:0 3px 12px rgba(23,43,77,.035)}
+.auto-sticky-head h2{font-size:17px;letter-spacing:-.2px}
+.auto-sticky-head p{line-height:1.45}
+.auto-details{padding:0 24px 22px}
+.auto-details summary{margin:0 -2px;padding:22px 2px 16px;border-bottom:1px solid #f0f3f5}
+.auto-details summary:hover{color:#168a73}
+.auto-details summary b{font-size:14px;letter-spacing:-.1px}
+.auto-details summary i{width:27px;height:27px;display:grid;place-items:center;border:1px solid #d9ebe6;border-radius:8px;background:#f2faf7;font-size:16px}
+.auto-details[open] summary i{background:#e4f6f0;border-color:#bfe4d9}
+.auto-details:first-of-type{padding-top:0}
+.auto-details .form-grid{gap:14px 16px;margin-top:17px}
+.auto-details .form-field{min-width:0;gap:7px}
+.auto-details .form-field>span{font-size:11px;font-weight:700;color:#405069}
+.auto-details .form-field input,.auto-details .form-field select,.auto-details .form-field textarea{min-width:0;min-height:42px;border-radius:9px;background:#fbfcfe;font-size:12px}
+.auto-details .form-field textarea{min-height:96px;line-height:1.45}
+.auto-details .form-field input:hover,.auto-details .form-field select:hover,.auto-details .form-field textarea:hover{background:#fff;border-color:#b9cbd4}
+.auto-details .form-field input:focus,.auto-details .form-field select:focus,.auto-details .form-field textarea:focus{background:#fff}
+.auto-check-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:14px}
+.auto-check-grid .check{min-width:0;min-height:48px;padding:10px 12px;border-radius:9px;background:#fcfdfd;transition:border-color .15s,background .15s,box-shadow .15s}
+.auto-check-grid .check:hover{border-color:#a9d9cc;background:#f5fbf9;box-shadow:0 3px 10px rgba(31,157,134,.06)}
+.auto-option input{flex:0 0 15px;width:15px;height:15px;margin-top:2px}
+.auto-option span{min-width:0;line-height:1.35}
+.auto-subtitle{padding-top:2px;margin:21px 0 9px;font-size:11px;letter-spacing:.03em;text-transform:uppercase;color:#758397}
+.auto-warning{margin-top:14px;border-radius:9px}
+.auto-language-row{grid-template-columns:105px minmax(0,1fr) minmax(0,1fr);gap:9px;padding:10px 0;border-bottom:1px solid #f0f3f5}
+.auto-language-row:last-child{border-bottom:0}
+.auto-language-row select{min-width:0;width:100%;min-height:40px;border:1px solid #dce4ea;border-radius:8px;padding:8px 10px;background:#fbfcfe;color:#344159;font:12px 'DM Sans'}
+.auto-account-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 145px 36px;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f3f5}
+.auto-account-row input,.auto-account-row select,.auto-xml-row input,.auto-xml-row textarea{min-height:40px;border:1px solid #dce4ea;border-radius:8px;padding:9px 10px;background:#fbfcfe;color:#344159;font:12px 'DM Sans'}
+.auto-account-row input:focus,.auto-account-row select:focus,.auto-xml-row input:focus,.auto-xml-row textarea:focus{outline:0;border-color:#2aa88e;box-shadow:0 0 0 3px #24a18919;background:#fff}
+.auto-add-button{padding:9px 13px;border-radius:8px;font-size:11px}
+.icon-button{width:36px;height:36px}
+.auto-script-card{min-width:0;border-radius:10px;background:linear-gradient(180deg,#fbfdfd,#f8fafb);box-shadow:0 3px 12px rgba(23,43,77,.025)}
+.auto-script-card .form-field{min-width:0}
+.auto-script-card textarea{min-height:82px!important}
+.auto-xml-row{grid-template-columns:minmax(210px,.72fr) minmax(0,1.28fr);align-items:start;padding:9px 0;border-bottom:1px solid #f0f3f5}
+.auto-xml-row:last-child{border-bottom:0}
+.auto-side{position:sticky;top:20px;min-width:0}
+.auto-side .panel{overflow:hidden;border-radius:13px;box-shadow:0 8px 25px rgba(23,43,77,.045)}
+.auto-preset{min-width:0;padding:13px 18px;transition:background .15s,color .15s}
+.auto-preset span{min-width:0}
+.auto-preset b,.auto-preset small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.auto-summary{padding:20px}
+.auto-summary h2{font-size:15px}
+.auto-summary span{line-height:1.4}
+.auto-summary .outline{min-height:39px}
+.auto-bottom-actions{align-items:center;padding:20px 24px 24px;background:#fbfcfd;border-top:1px solid #e8eef1}
+.auto-bottom-actions button{flex:0 1 auto;padding:10px 14px}
+.auto-bottom-actions .primary{box-shadow:0 5px 14px rgba(31,157,134,.18)}
+.auto-json-preview{margin:0 24px 24px;border-radius:10px;box-shadow:inset 0 1px 3px rgba(0,0,0,.2)}
+.auto-page-head button,.auto-bottom-actions button,.auto-add-button{transition:transform .15s,box-shadow .15s,background .15s,border-color .15s}
+.auto-page-head button:hover,.auto-bottom-actions button:hover,.auto-add-button:hover{transform:translateY(-1px)}
+.auto-head-actions .outline svg,.auto-bottom-actions svg,.auto-add-button svg{flex:0 0 auto}
+@media(max-width:1120px){.auto-layout{grid-template-columns:minmax(0,1fr)}.auto-side{position:static;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.8fr);align-items:start}.auto-side .panel{min-width:0}}
+@media(max-width:820px){.auto-sticky-head{align-items:flex-start;gap:12px;flex-direction:column}.auto-sticky-head .primary{width:100%}.auto-account-row{grid-template-columns:repeat(2,minmax(0,1fr))}.auto-account-row .icon-button{grid-column:span 2;justify-self:end}.auto-side{grid-template-columns:1fr}.auto-bottom-actions{align-items:stretch}.auto-bottom-actions button{flex:1 1 calc(50% - 8px)}}
+@media(max-width:620px){.auto-page-head{gap:15px}.auto-head-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.auto-head-actions button{width:100%;padding:10px 8px;font-size:11px}.auto-details{padding-left:17px;padding-right:17px}.auto-sticky-head{padding:18px 17px 15px}.auto-details .form-grid{grid-template-columns:1fr;gap:12px}.auto-details .form-field:has(textarea){grid-column:auto}.auto-check-grid{grid-template-columns:1fr}.auto-language-row{grid-template-columns:1fr;gap:7px;padding:12px 0}.auto-language-row b{margin-bottom:-2px}.auto-account-row{grid-template-columns:1fr}.auto-account-row .icon-button{grid-column:auto;justify-self:start}.auto-xml-row{grid-template-columns:1fr;gap:8px}.auto-bottom-actions{padding:16px 17px 19px}.auto-bottom-actions button{flex-basis:100%;width:100%}.auto-json-preview{margin-left:17px;margin-right:17px;padding:12px;font-size:10px}.auto-summary{padding:17px}}

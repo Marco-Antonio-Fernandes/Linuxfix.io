@@ -1,1 +1,7 @@
-{"identifier":"desktop","description":"Janelas locais do painel e personalização","windows":["main","dock","whatsapp"],"permissions":["core:default","dialog:allow-open"]}
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões do cliente Linux do Fix.io",
+  "windows": ["main", "whatsapp"],
+  "permissions": ["core:default", "dialog:default"]
+}
