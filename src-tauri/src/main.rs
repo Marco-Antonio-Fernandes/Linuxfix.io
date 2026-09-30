@@ -228,7 +228,7 @@ fn place_whatsapp_child(webview: &Webview, bounds: ContentBounds) -> Result<()> 
     Ok(())
 }
 
-fn place_whatsapp_window(main: &tauri::Window, window: &tauri::WebviewWindow) -> Result<()> {
+fn place_whatsapp_window(main: &tauri::WebviewWindow, window: &tauri::WebviewWindow) -> Result<()> {
     let origin = main.outer_position().map_err(|error| error.to_string())?;
     let size = main.inner_size().map_err(|error| error.to_string())?;
     let width = (size.width as f64 * 0.86).clamp(720.0, 1400.0) as u32;
@@ -249,18 +249,22 @@ fn can_embed_child_webview() -> bool {
         || (env::var_os("DISPLAY").is_some() && env::var("GDK_BACKEND").as_deref() == Ok("x11"))
 }
 
-fn open_whatsapp_window(app: &tauri::AppHandle, main: &tauri::Window) -> Result<()> {
+fn open_whatsapp_window(app: &tauri::AppHandle, main: &tauri::WebviewWindow) -> Result<()> {
     let webview_data = data_dir()?.join("webview/whatsapp");
     fs::create_dir_all(&webview_data)
         .map_err(|error| format!("Não foi possível preparar o perfil do WhatsApp: {error}"))?;
-    let window = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
+    let builder = WebviewWindowBuilder::new(app, "whatsapp", whatsapp_url()?)
         .title("Fix.io · WhatsApp Web")
         .user_agent(WHATSAPP_USER_AGENT)
         .data_directory(webview_data)
-        .parent(main)
         .inner_size(900.0, 680.0)
         .min_inner_size(720.0, 520.0)
+        .prevent_overflow_with_margin(tauri::PhysicalSize::new(24, 48))
+        .center()
         .visible(false)
+        .parent(main)
+        .map_err(|error| format!("Não foi possível vincular a janela do WhatsApp à janela principal: {error}"))?;
+    let window = builder
         .build()
         .map_err(|error| format!("Não foi possível criar a janela WebKitGTK do WhatsApp: {error}"))?;
     place_whatsapp_window(main, &window)?;
@@ -282,14 +286,16 @@ fn open_whatsapp(app: &tauri::AppHandle, bounds: Option<ContentBounds>) -> Resul
         return Ok(());
     }
     if let Some(window) = app.get_webview_window("whatsapp") {
-        place_whatsapp_window(&main, &window)?;
+        let main_webview = app.get_webview_window("main").ok_or("WebView principal não encontrada.")?;
+        place_whatsapp_window(&main_webview, &window)?;
         window.show().map_err(|error| error.to_string())?;
         window.set_focus().map_err(|error| error.to_string())?;
         return Ok(());
     }
 
     if !can_embed_child_webview() {
-        return open_whatsapp_window(app, &main);
+        let main_webview = app.get_webview_window("main").ok_or("WebView principal não encontrada.")?;
+        return open_whatsapp_window(app, &main_webview);
     }
 
     let webview_data = data_dir()?.join("webview/whatsapp");
@@ -309,7 +315,8 @@ fn open_whatsapp(app: &tauri::AppHandle, bounds: Option<ContentBounds>) -> Resul
             Ok(())
         }
         Err(error) => {
-            open_whatsapp_window(app, &main)
+            let main_webview = app.get_webview_window("main").ok_or("WebView principal não encontrada.")?;
+            open_whatsapp_window(app, &main_webview)
                 .map_err(|fallback| format!("WebView filha indisponível ({error}); fallback também falhou: {fallback}"))
         }
     }
@@ -469,6 +476,19 @@ fn main() {
         .manage(UiState::default())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![desktop_message, close_whatsapp])
+        .on_window_event(|window, event| {
+            if window.label() != "main"
+                || !matches!(event, tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_))
+            {
+                return;
+            }
+            if let (Some(main), Some(whatsapp)) = (
+                window.app_handle().get_webview_window("main"),
+                window.app_handle().get_webview_window("whatsapp"),
+            ) {
+                let _ = place_whatsapp_window(&main, &whatsapp);
+            }
+        })
         .run(tauri::generate_context!())
         .expect("Não foi possível iniciar o Fix.io Linux");
 }
