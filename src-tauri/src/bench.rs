@@ -435,7 +435,7 @@ impl X11WindowController {
         // MWM_HINTS: flags=decorations, decorations=0. This is understood by
         // X11 window managers and is harmless if Wayland keeps the X window.
         self.connection.change_property32(PropMode::REPLACE, self.window,
-            self.atoms.motif_hints, AtomEnum::CARDINAL.into(), &[2, 0, 0, 0, 0])
+            self.atoms.motif_hints, AtomEnum::CARDINAL, &[2, 0, 0, 0, 0])
             .map_err(|error| error.to_string())?
             .check().map_err(|error| error.to_string())?;
         self.connection.configure_window(self.window,
