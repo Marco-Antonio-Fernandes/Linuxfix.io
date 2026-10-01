@@ -1,5 +1,6 @@
-//! Contain every program window in a nested X server hosted by a GTK child.
-//! There is deliberately no fallback to the desktop DISPLAY.
+//! Run the selected program in a dedicated Xephyr display.
+//! This diagnostic mode deliberately leaves Xephyr as a separate window until
+//! the X11 parent integration is proven compatible with KDE/XWayland.
 use crate::{command_exists, data_dir, emit_status, embedded::{self, BenchHost}, expand, load_config, Result};
 use fs2::FileExt;
 use std::{
@@ -63,13 +64,13 @@ pub fn selection_changed(app: &tauri::AppHandle) -> Result<()> {
 pub fn preflight(executable: &Path) -> Result<()> {
     if !executable.is_file() { return Err("O executável selecionado não existe.".into()); }
     if !command_exists("Xephyr") {
-        return Err("Falta Xephyr (pacote xorg-server-xephyr) para a área interna. Nada será aberto por fora.".into());
+        return Err("Falta Xephyr (pacote xorg-server-xephyr) para a Bancada. Nenhum programa será aberto diretamente no desktop.".into());
     }
     if !command_exists("wine") || !command_exists("wineserver") {
         return Err("Instale Wine com wineserver para executar o programa dentro da Bancada.".into());
     }
     if std::env::var_os("DISPLAY").is_none() {
-        return Err("XWayland não está disponível nesta sessão. A Bancada requer XWayland e Xephyr; a abertura externa está desativada.".into());
+        return Err("XWayland não está disponível nesta sessão. A Bancada requer XWayland e Xephyr.".into());
     }
     Ok(())
 }
@@ -335,8 +336,9 @@ fn run(app: &tauri::AppHandle, executable: PathBuf, host: BenchHost, stop: Recei
         // Use the display that owns the GTK parent, not the internal display.
         // Keep the HOST XAUTHORITY inherited; -auth below protects the CHILD.
         .env("DISPLAY", &host.display)
-        // -parent must precede -screen, otherwise a standalone host may appear.
-        .arg("-parent").arg(host.xid.to_string())
+        // Do not pass -parent during this diagnostic phase. The manual
+        // Xephyr :99 flow works, while the GTK/XWayland XID currently causes
+        // Xephyr to exit with X11 error code 8 before Wine can start.
         .arg("-screen").arg(format!("{}x{}", host.width, host.height))
         .args(["-resizeable", "-br", "-noreset", "-nolisten", "tcp", "-displayfd", "1"])
         .arg("-auth").arg(&auth)
