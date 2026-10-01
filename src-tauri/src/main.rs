@@ -60,7 +60,7 @@ fn content_bounds(message: &Value) -> Option<ContentBounds> {
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct LinuxConfig {
     wine_executable: Option<String>,
-    // Preserve legacy configuration, but do not reuse an external wineserver.
+    // Reuse the installed environment; never replace it with a fresh prefix.
     wine_prefix: Option<String>,
 }
 
@@ -164,8 +164,7 @@ async fn desktop_message(app: tauri::AppHandle, message: Value) -> Result<()> {
                 .ok_or("Escolha o executável antes de abrir a bancada.")?;
             let path = fs::canonicalize(path).map_err(|e| format!("Executável não encontrado: {e}"))?;
             bench::preflight(&path)?;
-            let host = embedded::bench_host(&app).await?;
-            bench::start(&app, path, host)?;
+            embedded::start_bench(&app, path).await?;
         }
         "techunion-stop" => { bench::stop(&app)?; }
         // Stale frontend commands cannot launch on the host desktop.

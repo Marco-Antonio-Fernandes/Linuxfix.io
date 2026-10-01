@@ -55,6 +55,11 @@ impl NativeUi {
         bench_frame.add(&bench);
         if let Some(child) = bench_frame.child() { child.show(); }
         overlay.add_overlay(&bench_frame);
+        // Xephyr creates its child using the host screen's root visual. Do not
+        // inherit Tauri's RGBA visual: a depth mismatch causes X11 BadMatch.
+        if let Some(visual) = bench.screen().and_then(|screen| screen.system_visual()) {
+            bench.set_visual(Some(&visual));
+        }
         bench.show();
         Ok(Self { overlay, whatsapp: None, bench, bench_frame })
     }
@@ -210,12 +215,15 @@ pub async fn hide_whatsapp(app: &tauri::AppHandle) -> Result<()> {
 
 pub struct BenchHost {
     pub xid: u64,
+    pub display: String,
+    pub depth: i32,
     pub width: u32,
     pub height: u32,
 }
 
-pub async fn bench_host(app: &tauri::AppHandle) -> Result<BenchHost> {
-    on_ui(app, |ui, app| {
+pub async fn start_bench(app: &tauri::AppHandle, executable: std::path::PathBuf) -> Result<()> {
+    on_ui(app, move |ui, app| {
+        if bench::is_active(app)? { return bench::report(app); }
         let state = snapshot(app)?;
         if state.active_page != "techunion" || state.obscured {
             return Err("Mantenha a Bancada visível para iniciar.".into());
@@ -223,22 +231,46 @@ pub async fn bench_host(app: &tauri::AppHandle) -> Result<BenchHost> {
         if !place(&ui.overlay, &ui.bench_frame, state.bench_bounds, state.content_bounds, true) {
             return Err("Aguarde a área da Bancada terminar de ajustar o tamanho.".into());
         }
+        // Commit the margins/child allocation before Xephyr reads its parent
+        // geometry. Otherwise the newly shown DrawingArea can still be 1x1.
+        ui.overlay.size_allocate(&ui.overlay.allocation());
         ui.bench_frame.realize();
         if let Some(viewport) = ui.bench.parent() { viewport.realize(); }
         ui.bench.realize();
         let window = ui.bench.window().ok_or("Não foi possível criar a área gráfica interna.")?;
+        if !window.ensure_native() {
+            ui.bench_frame.hide();
+            return Err("Não foi possível criar a janela-pai nativa da Bancada.".into());
+        }
+        let display = window.display();
+        let visual = window.visual();
+        let width = ui.bench.allocated_width();
+        let height = ui.bench.allocated_height();
+        if width < 2 || height < 2 {
+            ui.bench_frame.hide();
+            return Err("A área da Bancada ainda não recebeu um tamanho válido. Tente novamente.".into());
+        }
         let window = window.downcast::<gdkx11::X11Window>()
             .map_err(|_| {
                 ui.bench_frame.hide();
                 "A Bancada exige XWayland para a área interna. Nenhum programa foi iniciado."
             })?;
-        let bounds = state.bench_bounds.ok_or("Área da Bancada indisponível.")?;
-        let scale = ui.bench.scale_factor() as f64;
-        Ok(BenchHost {
+        let scale = ui.bench.scale_factor().max(1) as u32;
+        // Flush AND wait for XWayland to create the native XID. Xephyr uses a
+        // separate connection and must not race GTK's buffered X11 requests.
+        display.sync();
+        let host = BenchHost {
             xid: window.xid() as u64,
-            width: (bounds.width * scale).clamp(64.0, 8192.0) as u32,
-            height: (bounds.height * scale).clamp(64.0, 8192.0) as u32,
-        })
+            display: display.name().to_string(),
+            depth: visual.depth(),
+            width: (width as u32 * scale).clamp(2, 8192),
+            height: (height as u32 * scale).clamp(2, 8192),
+        };
+        // Reserve the session before leaving GTK's thread. A pending bounds
+        // update must not hide the host between preparing it and starting.
+        let result = bench::start(app, executable, host);
+        if result.is_err() { ui.bench_frame.hide(); }
+        result
     }).await
 }
 

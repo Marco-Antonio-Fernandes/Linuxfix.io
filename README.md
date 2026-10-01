@@ -35,20 +35,45 @@ Escolher um executável somente salva o caminho. É necessário clicar em
 sessão; voltar não inicia outra instância. **Encerrar** ou fechar o Fix.io encerra
 os processos da sessão interna. Salve o trabalho antes de encerrar.
 
-A Bancada usa um ambiente Wine próprio em `~/.local/share/fixio/wine-bench`
-(respeitando `XDG_DATA_HOME`). Ela não reutiliza `~/.wine` nem o antigo
-`wine_prefix`: um wineserver existente poderia levar o programa à tela externa.
-Programas que dependem de instalação, registro ou bibliotecas nesse prefixo
-precisam ser instalados nesse ambiente: selecione primeiro seu instalador na
-Bancada e depois o executável instalado. As instalações anteriores não são
-apagadas nem copiadas automaticamente. O Wine continua necessário para o EXE.
+A Bancada reutiliza o prefixo já instalado e validado em
+`~/.local/share/fixio/wine/union` (respeitando `XDG_DATA_HOME`). Se houver um
+`wine_prefix` em `~/.local/share/fixio/linux.json`, esse caminho tem prioridade
+e aceita `~/`. O prefixo precisa existir: o Fix.io não cria outro ambiente,
+não reinstala dependências e não altera a configuração do Wine. O executável
+continua sendo escolhido pelo usuário; não há caminho fixo para o EXE.
+
+Antes de iniciar, a Bancada verifica se esse prefixo está livre. Se o programa
+do teste manual ainda estiver aberto, é preciso fechá-lo; o Fix.io não o mata
+nem tenta incorporá-lo depois de aberto. Durante a sessão interna, reserve esse
+prefixo à Bancada: **Encerrar** encerra o wineserver desse prefixo e seus processos.
+Uma falha do Xephyr antes de iniciar o EXE não encerra sessões Wine existentes.
+O Wine continua necessário para o EXE.
+
+### Sequência automática da Bancada
+
+1. Prepara uma janela-pai GTK nativa com o visual padrão do display X11,
+   aplica o tamanho da área e sincroniza sua criação com o XWayland.
+2. Inicia Xephyr com `DISPLAY` igual ao display dessa janela (por exemplo,
+   `:0`), preservando a autenticação do hospedeiro e usando `-parent`.
+3. Deixa o próprio Xephyr reservar um display livre por `-displayfd`; não
+   fixa `:99` nem remove sockets/locks de outros servidores.
+4. Aguarda até 15 segundos pelo sinal de prontidão **e** pelo socket
+   `/tmp/.X11-unix/X<n>`, verificando se Xephyr continua vivo. A espera pode
+   ser cancelada por **Encerrar** ou ao fechar o Fix.io.
+5. Só então executa `wine <executável selecionado>` com `DISPLAY=:<n>` e o
+   prefixo instalado. Não usa `explorer /desktop` nem abre uma janela externa
+   como alternativa. Se o servidor falhar, o EXE não é iniciado.
 
 O display interno tem autenticação Xauthority, não escuta em TCP e usa um
 bloqueio exclusivo para impedir sessões concorrentes. O diagnóstico da última
-sessão é gravado em `~/.local/share/fixio/bench.log`. Isso isola as janelas, não
+sessão é gravado em `~/.local/share/fixio/bench.log`, com display hospedeiro,
+XID/visual/tamanho da janela-pai, prefixo e display interno. Falhas de partida
+incluem as últimas linhas do erro do Xephyr na interface. Isso isola as janelas, não
 é uma sandbox de segurança para executáveis não confiáveis.
 
-Esta alteração de integração foi feita **somente no código**. Ainda requer
+O fluxo Wine + Xephyr em janela própria já foi validado manualmente no
+Arch/KDE Wayland. A correção da inicialização automática com `-parent` foi
+feita **somente no código**, sem repetir esse teste manual. Ainda requer
 compilação e teste visual no Linux, incluindo mouse/teclado, troca de página,
 redimensionamento, QR code e encerramento. Não há confirmação de funcionamento
 no computador de teste até essa validação.
