@@ -360,7 +360,7 @@ impl X11WindowController {
 
     fn client_windows(connection: &RustConnection, root: Window, atoms: &X11Atoms) -> Result<Vec<Window>> {
         let reply = connection.get_property(false, root, atoms.client_list,
-            AtomEnum::WINDOW.into(), 0, u32::MAX)
+            AtomEnum::WINDOW, 0, u32::MAX)
             .map_err(|error| error.to_string())?
             .reply().map_err(|error| error.to_string())?;
         let windows: Vec<u32> = reply
