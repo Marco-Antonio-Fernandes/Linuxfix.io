@@ -16,9 +16,10 @@ use std::{
 use tauri::Manager;
 use x11rb::{
     connection::Connection,
-    protocol::xproto::{Atom, AtomEnum, ConnectionExt, ConfigureWindowAux, PropMode, Window},
+    protocol::xproto::{Atom, AtomEnum, ConnectionExt as XprotoConnectionExt, ConfigureWindowAux, PropMode, Window},
     rust_connection::RustConnection,
 };
+use x11rb::wrapper::ConnectionExt;
 
 struct Control {
     active: bool,
@@ -362,7 +363,10 @@ impl X11WindowController {
             AtomEnum::WINDOW.into(), 0, u32::MAX)
             .map_err(|error| error.to_string())?
             .reply().map_err(|error| error.to_string())?;
-        let windows = reply.value32().map(|values| values.collect()).unwrap_or_default();
+        let windows: Vec<u32> = reply
+            .value32()
+            .map(|values| values.collect())
+            .unwrap_or_default();
         if !windows.is_empty() { return Ok(windows); }
         connection.query_tree(root)
             .map_err(|error| error.to_string())?
