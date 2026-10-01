@@ -20,6 +20,7 @@ gdkx11 = "0.18"
 webkit2gtk = { version = "2.0", features = ["v2_40"] }
 futures-channel = "0.3"
 fs2 = "0.4"
+x11rb = "0.13"
 
 [profile.release]
 panic = "abort"

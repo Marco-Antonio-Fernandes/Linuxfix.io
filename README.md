@@ -14,11 +14,11 @@ de tarefas.
   `~/.local/share/fixio/webview/whatsapp`, inclusive o arquivo de cookies anterior.
   Não cria janela separada. Falhas de carregamento aparecem com opção de recarregar.
 - Bancada: o cliente inicia o servidor gráfico Xephyr em um display interno e
-  executa o Wine nesse display. Nesta etapa de diagnóstico, Xephyr permanece
-  em uma janela própria: a tentativa de usar `-parent` com o XID GTK/XWayland
-  foi retirada porque causava X11 error code 8 antes do Wine iniciar. A
-  incorporação no retângulo da Bancada será retomada depois de confirmar esse
-  fluxo básico.
+  executa o Wine nesse display. Xephyr não recebe `-parent` na criação, pois
+  essa tentativa com o XID GTK/XWayland causava X11 error code 8. Depois que a
+  janela existe, um controlador X11 tenta remover decoração, reparentá-la no
+  host GTK e acompanhar sua geometria; se o compositor recusar, a janela fica
+  separada e o programa continua funcionando.
 - `src-tauri/src/embedded.rs`: contêiner GTK, limites, visibilidade e WhatsApp.
 - `src-tauri/src/bench.rs`: sessão Xephyr/Wine, diagnóstico e encerramento.
 - `local-agent`: continua separado no repositório principal e ainda é legado
@@ -57,27 +57,27 @@ O Wine continua necessário para o EXE.
 1. Prepara uma janela-pai GTK nativa com o visual padrão do display X11,
    aplica o tamanho da área e sincroniza sua criação com o XWayland.
 2. Inicia Xephyr com `DISPLAY` igual ao display hospedeiro (por exemplo,
-   `:0`), preservando a autenticação do hospedeiro e sem `-parent` durante o
-   teste de compatibilidade.
+   `:0`), preservando a autenticação do hospedeiro e sem `-parent`.
 3. Deixa o próprio Xephyr reservar um display livre por `-displayfd`; não
    fixa `:99` nem remove sockets/locks de outros servidores.
 4. Aguarda até 15 segundos pelo sinal de prontidão **e** pelo socket
    `/tmp/.X11-unix/X<n>`, verificando se Xephyr continua vivo. A espera pode
    ser cancelada por **Encerrar** ou ao fechar o Fix.io.
-5. Só então executa `wine <executável selecionado>` com `DISPLAY=:<n>` e o
-   prefixo instalado. O Xephyr fica separado temporariamente; o EXE não é
-   lançado diretamente no desktop hospedeiro.
+5. Procura a janela do Xephyr no display hospedeiro, tenta integrá-la depois
+   da criação e passa a acompanhar posição/tamanho do host. Só então executa
+   `wine <executável selecionado>` com `DISPLAY=:<n>` e o prefixo instalado;
+   se a integração for recusada, o Xephyr fica separado temporariamente.
 
 O display interno tem autenticação Xauthority, não escuta em TCP e usa um
 bloqueio exclusivo para impedir sessões concorrentes. O diagnóstico da última
 sessão é gravado em `~/.local/share/fixio/bench.log`, com display hospedeiro,
-XID/visual/tamanho solicitado, prefixo e display interno. Falhas de partida
-incluem as últimas linhas do erro do Xephyr na interface. Isso isola as janelas, não
+XID candidato/visual/tamanho solicitado, prefixo e display interno. Falhas de
+partida incluem as últimas linhas do erro do Xephyr na interface. Isso isola as janelas, não
 é uma sandbox de segurança para executáveis não confiáveis.
 
 O fluxo Wine + Xephyr em janela própria já foi validado manualmente no
-Arch/KDE Wayland. Esta alteração remove temporariamente somente o `-parent`
-para comparar o fluxo automático com esse teste. Ainda requer
+Arch/KDE Wayland. A integração visual pós-criação é best-effort no KDE/Wayland;
+o fluxo de execução permanece independente dela. Ainda requer
 compilação e teste visual no Linux, incluindo mouse/teclado, troca de página,
 redimensionamento, QR code e encerramento. Não há confirmação de funcionamento
 no computador de teste até essa validação.

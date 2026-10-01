@@ -1,6 +1,6 @@
-//! Run the selected program in a dedicated Xephyr display.
-//! This diagnostic mode deliberately leaves Xephyr as a separate window until
-//! the X11 parent integration is proven compatible with KDE/XWayland.
+//! Run the selected program in a dedicated Xephyr display. Xephyr starts as a
+//! normal host window; a separate X11 controller then attempts post-create
+//! embedding without making the Wine launch depend on reparenting.
 use crate::{command_exists, data_dir, emit_status, embedded::{self, BenchHost}, expand, load_config, Result};
 use fs2::FileExt;
 use std::{
@@ -14,6 +14,11 @@ use std::{
     time::{Duration, Instant},
 };
 use tauri::Manager;
+use x11rb::{
+    connection::Connection,
+    protocol::xproto::{Atom, AtomEnum, ConnectionExt, ConfigureWindowAux, PropMode, Window},
+    rust_connection::RustConnection,
+};
 
 struct Control {
     active: bool,
@@ -156,6 +161,7 @@ struct Session {
     xephyr: Option<Child>,
     wine: Option<Child>,
     waiter: Option<Child>,
+    window: Option<X11WindowController>,
     owns_wine: bool,
 }
 
@@ -306,6 +312,173 @@ fn wait_xephyr(child: &mut Child, mut reader: UnixStream, stop: &Receiver<()>,
     }
 }
 
+struct X11Atoms {
+    client_list: Atom,
+    net_wm_name: Atom,
+    utf8_string: Atom,
+    wm_name: Atom,
+    motif_hints: Atom,
+}
+
+struct X11WindowController {
+    connection: RustConnection,
+    root: Window,
+    window: Window,
+    parent: Window,
+    embedded: bool,
+    atoms: X11Atoms,
+    last_geometry: Option<(i32, i32, u32, u32)>,
+    geometry_disabled: bool,
+}
+
+impl X11WindowController {
+    fn atom(connection: &RustConnection, name: &[u8]) -> Result<Atom> {
+        connection.intern_atom(false, name)
+            .map_err(|error| error.to_string())?
+            .reply().map(|reply| reply.atom).map_err(|error| error.to_string())
+    }
+
+    fn atoms(connection: &RustConnection) -> Result<X11Atoms> {
+        Ok(X11Atoms {
+            client_list: Self::atom(connection, b"_NET_CLIENT_LIST")?,
+            net_wm_name: Self::atom(connection, b"_NET_WM_NAME")?,
+            utf8_string: Self::atom(connection, b"UTF8_STRING")?,
+            wm_name: Self::atom(connection, b"WM_NAME")?,
+            motif_hints: Self::atom(connection, b"_MOTIF_WM_HINTS")?,
+        })
+    }
+
+    fn property_name(connection: &RustConnection, window: Window, atom: Atom,
+        property_type: Atom) -> Result<Option<String>> {
+        let reply = connection.get_property(false, window, atom, property_type, 0, 1024)
+            .map_err(|error| error.to_string())?
+            .reply().map_err(|error| error.to_string())?;
+        if reply.value.is_empty() { return Ok(None); }
+        Ok(Some(String::from_utf8_lossy(&reply.value).trim_end_matches('\0').to_string()))
+    }
+
+    fn client_windows(connection: &RustConnection, root: Window, atoms: &X11Atoms) -> Result<Vec<Window>> {
+        let reply = connection.get_property(false, root, atoms.client_list,
+            AtomEnum::WINDOW.into(), 0, u32::MAX)
+            .map_err(|error| error.to_string())?
+            .reply().map_err(|error| error.to_string())?;
+        let windows = reply.value32().map(|values| values.collect()).unwrap_or_default();
+        if !windows.is_empty() { return Ok(windows); }
+        connection.query_tree(root)
+            .map_err(|error| error.to_string())?
+            .reply().map(|reply| reply.children).map_err(|error| error.to_string())
+    }
+
+    fn find_window(connection: &RustConnection, root: Window, atoms: &X11Atoms,
+        title: &str) -> Result<Option<Window>> {
+        for window in Self::client_windows(connection, root, atoms)? {
+            let name = Self::property_name(connection, window, atoms.net_wm_name, atoms.utf8_string)?
+                .or(Self::property_name(connection, window, atoms.wm_name, AtomEnum::STRING.into())?);
+            if name.as_deref().is_some_and(|name| name == title || name.contains(title)) {
+                return Ok(Some(window));
+            }
+        }
+        Ok(None)
+    }
+
+    fn attach(host: &BenchHost, title: &str) -> Result<Option<Self>> {
+        let (connection, screen) = x11rb::connect(Some(&host.display))
+            .map_err(|error| format!("Não foi possível conectar ao display hospedeiro {}: {error}", host.display))?;
+        let root = connection.setup().roots[screen].root;
+        let atoms = Self::atoms(&connection)?;
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let window = loop {
+            if let Some(window) = Self::find_window(&connection, root, &atoms, title)? {
+                break window;
+            }
+            if Instant::now() >= deadline { return Ok(None); }
+            thread::sleep(Duration::from_millis(50));
+        };
+        let mut controller = Self {
+            connection,
+            root,
+            window,
+            parent: host.xid as Window,
+            embedded: false,
+            atoms,
+            last_geometry: None,
+            geometry_disabled: false,
+        };
+        controller.remove_decorations()?;
+        // Xephyr already works as a top-level window. Reparent only after it
+        // exists, so a BadMatch here cannot prevent Wine from starting.
+        match controller.connection.reparent_window(controller.window, controller.parent, 0, 0)
+            .map_err(|error| error.to_string())
+            .and_then(|cookie| cookie.check().map_err(|error| error.to_string())) {
+            Ok(()) => {
+                controller.embedded = true;
+                controller.connection.map_window(controller.window)
+                    .map_err(|error| error.to_string())?
+                    .check().map_err(|error| error.to_string())?;
+            }
+            Err(error) => {
+                controller.remove_decorations()?;
+                let _ = controller.connection.map_window(controller.window);
+                let _ = controller.connection.flush();
+                eprintln!("Fix.io: Xephyr não pôde ser reparentado após a criação: {error}");
+            }
+        }
+        controller.connection.flush().map_err(|error| error.to_string())?;
+        Ok(Some(controller))
+    }
+
+    fn remove_decorations(&self) -> Result<()> {
+        // MWM_HINTS: flags=decorations, decorations=0. This is understood by
+        // X11 window managers and is harmless if Wayland keeps the X window.
+        self.connection.change_property32(PropMode::REPLACE, self.window,
+            self.atoms.motif_hints, AtomEnum::CARDINAL.into(), &[2, 0, 0, 0, 0])
+            .map_err(|error| error.to_string())?
+            .check().map_err(|error| error.to_string())?;
+        self.connection.configure_window(self.window,
+            &ConfigureWindowAux::new().border_width(0))
+            .map_err(|error| error.to_string())?
+            .check().map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn parent_geometry(&self) -> Result<(i32, i32, u32, u32)> {
+        let geometry = self.connection.get_geometry(self.parent)
+            .map_err(|error| error.to_string())?
+            .reply().map_err(|error| error.to_string())?;
+        let position = self.connection.translate_coordinates(self.parent, self.root, 0, 0)
+            .map_err(|error| error.to_string())?
+            .reply().map_err(|error| error.to_string())?;
+        Ok((position.dst_x.into(), position.dst_y.into(),
+            u32::from(geometry.width).max(2), u32::from(geometry.height).max(2)))
+    }
+
+    fn sync_geometry(&mut self) -> Result<()> {
+        if self.geometry_disabled { return Ok(()); }
+        let (x, y, width, height) = self.parent_geometry()?;
+        // A reparented window is relative to the GTK DrawingArea. A top-level
+        // fallback receives root coordinates; XWayland may clamp those under
+        // Wayland, but the request remains best-effort and harmless.
+        let (x, y) = if self.embedded { (0, 0) } else { (x, y) };
+        let geometry = (x, y, width, height);
+        if self.last_geometry == Some(geometry) { return Ok(()); }
+        self.connection.configure_window(self.window,
+            &ConfigureWindowAux::new().x(x).y(y).width(width).height(height).border_width(0))
+            .map_err(|error| error.to_string())?
+            .check().map_err(|error| error.to_string())?;
+        self.connection.flush().map_err(|error| error.to_string())?;
+        self.last_geometry = Some(geometry);
+        Ok(())
+    }
+
+    fn mode_message(&self, display: &str) -> String {
+        if self.embedded {
+            format!("Display interno {display} pronto; janela integrada na Bancada.")
+        } else {
+            format!("Display interno {display} pronto; Xephyr separado (o compositor recusou a integração X11).")
+        }
+    }
+}
+
 fn run(app: &tauri::AppHandle, executable: PathBuf, host: BenchHost, stop: Receiver<()>) -> Result<()> {
     let dir = data_dir()?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -316,17 +489,18 @@ fn run(app: &tauri::AppHandle, executable: PathBuf, host: BenchHost, stop: Recei
     let mut random = [0u8; 16];
     File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut random)).map_err(|e| e.to_string())?;
     let suffix: String = random.iter().map(|b| format!("{b:02x}")).collect();
+    let window_title = format!("Fix.io Bancada {suffix}");
     let auth_dir = std::env::temp_dir().join(format!("fixio-bench-{suffix}"));
     fs::DirBuilder::new().mode(0o700).create(&auth_dir).map_err(|e| e.to_string())?;
-    let mut session = Session { prefix, auth_dir, _lock: lock, xephyr: None, wine: None, waiter: None, owns_wine: false };
+    let mut session = Session { prefix, auth_dir, _lock: lock, xephyr: None, wine: None, waiter: None, window: None, owns_wine: false };
     if !idle_prefix(&mut session, &stop)? { return Ok(()); }
     xauthority(&session.auth_dir)?;
     let auth = session.auth_dir.join("Xauthority");
     let log_path = dir.join("bench.log");
     let mut log = OpenOptions::new().create(true).truncate(true).write(true).mode(0o600)
         .open(&log_path).map_err(|e| e.to_string())?;
-    writeln!(log, "Xephyr host DISPLAY={} parent=0x{:x} depth={} size={}x{}\nWine prefix={}",
-        host.display, host.xid, host.depth, host.width, host.height, session.prefix.display())
+    writeln!(log, "Xephyr host DISPLAY={} candidate-parent=0x{:x} depth={} size={}x{} title={}\nWine prefix={}",
+        host.display, host.xid, host.depth, host.width, host.height, window_title, session.prefix.display())
         .map_err(|e| e.to_string())?;
     let log_copy = || log.try_clone().map_err(|e| e.to_string());
     let (reader, writer) = UnixStream::pair().map_err(|e| e.to_string())?;
@@ -340,6 +514,7 @@ fn run(app: &tauri::AppHandle, executable: PathBuf, host: BenchHost, stop: Recei
         // Xephyr :99 flow works, while the GTK/XWayland XID currently causes
         // Xephyr to exit with X11 error code 8 before Wine can start.
         .arg("-screen").arg(format!("{}x{}", host.width, host.height))
+        .arg("-title").arg(&window_title)
         .args(["-resizeable", "-br", "-noreset", "-nolisten", "tcp", "-displayfd", "1"])
         .arg("-auth").arg(&auth)
         .stdin(Stdio::null()).stdout(Stdio::from(output)).stderr(log_copy()?)
@@ -349,6 +524,21 @@ fn run(app: &tauri::AppHandle, executable: PathBuf, host: BenchHost, stop: Recei
     if cancelled(&stop) { return Ok(()); }
     writeln!(&log, "Xephyr ready DISPLAY={display}; starting selected executable")
         .map_err(|e| e.to_string())?;
+    session.window = match X11WindowController::attach(&host, &window_title) {
+        Ok(controller) => controller,
+        Err(error) => {
+            writeln!(&log, "Xephyr window integration unavailable: {error}")
+                .map_err(|error| error.to_string())?;
+            None
+        }
+    };
+    if let Some(window) = session.window.as_mut() {
+        if let Err(error) = window.sync_geometry() {
+            writeln!(&log, "Initial Xephyr geometry update failed: {error}")
+                .map_err(|error| error.to_string())?;
+            window.geometry_disabled = true;
+        }
+    }
     let mut wine = Command::new("wine");
     // Match the manually validated launch: Wine + the selected EXE, using the
     // existing installation. Xephyr itself contains all program windows.
@@ -362,9 +552,19 @@ fn run(app: &tauri::AppHandle, executable: PathBuf, host: BenchHost, stop: Recei
     if let Some(directory) = executable.parent() { wine.current_dir(directory); }
     session.wine = Some(wine.spawn().map_err(|e| format!("Não foi possível iniciar o executável: {e}"))?);
     session.owns_wine = true;
-    status(app, "embedded", format!("Display interno {display} pronto; aguardando a janela do programa."));
+    let message = session.window.as_ref()
+        .map(|window| window.mode_message(&display))
+        .unwrap_or_else(|| format!("Display interno {display} pronto; aguardando a janela do programa."));
+    status(app, "embedded", message);
     loop {
         if matches!(stop.recv_timeout(Duration::from_millis(200)), Ok(()) | Err(RecvTimeoutError::Disconnected)) { return Ok(()); }
+        if let Some(window) = session.window.as_mut() {
+            if let Err(error) = window.sync_geometry() {
+                writeln!(&log, "Xephyr geometry update stopped: {error}")
+                    .map_err(|error| error.to_string())?;
+                window.geometry_disabled = true;
+            }
+        }
         if let Some(exit) = session.xephyr.as_mut().unwrap().try_wait().map_err(|e| e.to_string())? {
             return Err(format!("A área interna foi encerrada ({exit}). Consulte {}. Não houve abertura externa.", log_path.display()));
         }
