@@ -145,7 +145,8 @@ function ChatBetaWorkspace({ openOrder }) {
       const result = started.status === 'started' || started.status === 'running' ? await waitForWhatsAppSync() : started.result || started
       await loadConversations({ silent: true })
       const errors = Number(result.errors?.length || 0)
-      setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) nova(s)${result.unregistered ? ` · ${result.unregistered} contato(s) ainda não cadastrado(s)` : ''}${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s)` : ''}.`)
+      const errorDetails = result.errors?.slice?.(0, 2).join(' | ')
+      setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) importada(s)${result.unregistered ? ` · ${result.unregistered} contato(s) ainda não cadastrado(s)` : ''}${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s): ${errorDetails}` : ''}.`)
     } catch (exception) {
       setSyncMessage(exception.message)
     } finally {
