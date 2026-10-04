@@ -10,6 +10,7 @@ const navigation = [
   ['finance', CircleDollarSign, 'Financeiro'],
   ['inventory', Boxes, 'Estoque'],
   ['whatsapp', MessageCircle, 'WhatsApp'],
+  ['chat-beta', MessageCircle, 'Chat (beta)'],
   ['techunion', MonitorPlay, 'Bancada'],
   ['autounattend', FileCode2, 'Auto Atende'],
 ]
@@ -166,7 +167,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
           <span className="pix-toast-icon"><BellRing size={17} /></span><span><b>Novo Pix identificado</b><small>{pixToast.direction === 'in' ? 'Entrada' : 'Saída'} de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(pixToast.amount_cents) || 0) / 100)} · classifique no Financeiro</small></span><X size={15} onClick={event => { event.stopPropagation(); setPixToast(null) }} />
         </button>}
       </header>
-      <main className={`content${page === 'whatsapp' ? ' whatsapp-content' : page === 'techunion' ? ' tech-union-content' : ''}`}>{children}</main>
+      <main className={`content${page === 'whatsapp' ? ' whatsapp-content' : page === 'chat-beta' ? ' chat-beta-content' : page === 'techunion' ? ' tech-union-content' : ''}`}>{children}</main>
     </div>
   </div>
 }
