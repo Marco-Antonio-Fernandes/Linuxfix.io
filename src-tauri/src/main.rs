@@ -185,6 +185,14 @@ async fn close_whatsapp(app: tauri::AppHandle) -> Result<()> {
 fn main() {
     // Xephyr needs an X11 host, which XWayland supplies within a Wayland session.
     // Without DISPLAY, WhatsApp still uses native GTK; the bench fails closed.
+    // Some Arch/Mesa combinations abort inside WebKitWebProcess when accelerated
+    // compositing or the DMA-BUF renderer is enabled. Keep an opt-out available
+    // for debugging, but default to the stable software path for this AppImage.
+    if env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() { env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1"); }
+    if env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() { env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1"); }
+    if env::var_os("WEBKIT_HARDWARE_ACCELERATION_POLICY").is_none() { env::set_var("WEBKIT_HARDWARE_ACCELERATION_POLICY", "never"); }
+    if env::var_os("WEBKIT_SKIA_ENABLE_CPU_RENDERING").is_none() { env::set_var("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1"); }
+    if env::var_os("LIBGL_ALWAYS_SOFTWARE").is_none() { env::set_var("LIBGL_ALWAYS_SOFTWARE", "1"); }
     if env::var_os("DISPLAY").is_some() { env::set_var("GDK_BACKEND", "x11"); }
     tauri::Builder::default()
         .manage(UiState::default())
