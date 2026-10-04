@@ -22,7 +22,7 @@ async function chatApi(path, options = {}) {
 const initials = name => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(item => item[0]).join('').toUpperCase()
 const avatarColors = ['mint', 'blue', 'purple', 'orange']
 const avatarColor = id => avatarColors[Math.abs(Number(id) || String(id || '').length) % avatarColors.length]
-const displayPhone = value => value || 'Telefone não informado'
+const displayPhone = value => String(value || '').endsWith('@g.us') ? 'Grupo do WhatsApp' : value || 'Telefone não informado'
 const formatOrder = conversation => conversation?.service_order_number ? `#${conversation.service_order_number}` : 'Sem OS vinculada'
 const formatTime = value => {
   if (!value) return '—'
