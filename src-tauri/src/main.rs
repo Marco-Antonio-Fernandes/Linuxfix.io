@@ -92,6 +92,17 @@ fn command_exists(program: &str) -> bool {
     env::split_paths(&path).any(|dir| dir.join(program).is_file())
 }
 
+fn append_env_path(name: &str, path: &str) {
+    let current = env::var(name).unwrap_or_default();
+    if current.split(':').any(|entry| entry == path) { return; }
+    let value = if current.is_empty() {
+        path.to_owned()
+    } else {
+        format!("{current}:{path}")
+    };
+    env::set_var(name, value);
+}
+
 fn expand(path: &str) -> PathBuf {
     if path == "~" { return home().unwrap_or_default(); }
     if let Some(rest) = path.strip_prefix("~/") { return home().unwrap_or_default().join(rest); }
@@ -193,6 +204,11 @@ fn main() {
     if env::var_os("WEBKIT_HARDWARE_ACCELERATION_POLICY").is_none() { env::set_var("WEBKIT_HARDWARE_ACCELERATION_POLICY", "never"); }
     if env::var_os("WEBKIT_SKIA_ENABLE_CPU_RENDERING").is_none() { env::set_var("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1"); }
     if env::var_os("LIBGL_ALWAYS_SOFTWARE").is_none() { env::set_var("LIBGL_ALWAYS_SOFTWARE", "1"); }
+    // linuxdeploy bundles GStreamer itself but not the host plugins. Keep the
+    // bundled runtime while allowing sinks such as autoaudiosink, pipewiresink
+    // and pulsesink from the installed Arch packages.
+    append_env_path("GST_PLUGIN_SYSTEM_PATH_1_0", "/usr/lib/gstreamer-1.0");
+    append_env_path("GST_PLUGIN_PATH_1_0", "/usr/lib/gstreamer-1.0");
     if env::var_os("DISPLAY").is_some() { env::set_var("GDK_BACKEND", "x11"); }
     tauri::Builder::default()
         .manage(UiState::default())
