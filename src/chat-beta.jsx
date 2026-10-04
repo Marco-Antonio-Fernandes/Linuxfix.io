@@ -117,12 +117,23 @@ function ChatBetaWorkspace({ openOrder }) {
     }
   }
 
+  const waitForWhatsAppSync = async () => {
+    for (let attempt = 0; attempt < 240; attempt++) {
+      await new Promise(resolve => window.setTimeout(resolve, 1000))
+      const state = await chatApi('/api/integrations/whatsapp/sync')
+      if (state.status === 'finished') return state.result || {}
+      if (state.status === 'error') throw Error(state.error || 'A sincronização do WhatsApp falhou.')
+    }
+    throw Error('A sincronização continua no servidor. Atualize as conversas novamente em alguns minutos.')
+  }
+
   const syncWhatsApp = async ({ silent = false } = {}) => {
     if (syncingWhatsApp) return
     try {
       setSyncingWhatsApp(true)
       if (!silent) setSyncMessage('Sincronizando conversas do WA-AKG...')
-      const result = await chatApi('/api/integrations/whatsapp/sync', { method: 'POST' })
+      const started = await chatApi('/api/integrations/whatsapp/sync', { method: 'POST' })
+      const result = started.status === 'started' || started.status === 'running' ? await waitForWhatsAppSync() : started.result || started
       await loadConversations({ silent: true })
       const errors = Number(result.errors?.length || 0)
       setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) nova(s)${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s)` : ''}.`)
