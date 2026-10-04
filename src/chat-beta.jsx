@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, RefreshCw, Search, Send, Smile, UserRound } from 'lucide-react'
+import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, RefreshCw, Search, Send, Smile, UserPlus, UserRound } from 'lucide-react'
 import './chat-beta.css'
 
 const API = (import.meta.env.VITE_API_URL || 'https://backfixio.rotatix.com.br').replace(/\/$/, '')
@@ -22,7 +22,11 @@ async function chatApi(path, options = {}) {
 const initials = name => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(item => item[0]).join('').toUpperCase()
 const avatarColors = ['mint', 'blue', 'purple', 'orange']
 const avatarColor = id => avatarColors[Math.abs(Number(id) || String(id || '').length) % avatarColors.length]
-const displayPhone = value => String(value || '').endsWith('@g.us') ? 'Grupo do WhatsApp' : value || 'Telefone não informado'
+const displayPhone = value => {
+  const raw = String(value || '')
+  if (raw.endsWith('@g.us')) return 'Grupo do WhatsApp'
+  return raw.replace(/@s\.whatsapp\.net$/, '') || 'Telefone não informado'
+}
 const formatOrder = conversation => conversation?.service_order_number ? `#${conversation.service_order_number}` : 'Sem OS vinculada'
 const formatTime = value => {
   if (!value) return '—'
@@ -101,6 +105,11 @@ function ChatBetaWorkspace({ openOrder }) {
   const [creatingConversation, setCreatingConversation] = useState(false)
   const [syncingWhatsApp, setSyncingWhatsApp] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [registerOpen, setRegisterOpen] = useState(false)
+  const [registerName, setRegisterName] = useState('')
+  const [registerEmail, setRegisterEmail] = useState('')
+  const [registerDocument, setRegisterDocument] = useState('')
+  const [registering, setRegistering] = useState(false)
 
   const loadConversations = async ({ silent = false } = {}) => {
     if (!silent) setApiState('loading')
@@ -136,7 +145,7 @@ function ChatBetaWorkspace({ openOrder }) {
       const result = started.status === 'started' || started.status === 'running' ? await waitForWhatsAppSync() : started.result || started
       await loadConversations({ silent: true })
       const errors = Number(result.errors?.length || 0)
-      setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) nova(s)${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s)` : ''}.`)
+      setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) nova(s)${result.unregistered ? ` · ${result.unregistered} contato(s) ainda não cadastrado(s)` : ''}${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s)` : ''}.`)
     } catch (exception) {
       setSyncMessage(exception.message)
     } finally {
@@ -249,6 +258,34 @@ function ChatBetaWorkspace({ openOrder }) {
     }
   }
 
+  const openRegisterClient = () => {
+    if (!selected || String(selected.client_phone || '').endsWith('@g.us')) return
+    setRegisterName(selected.client_name || '')
+    setRegisterEmail(selected.client_email || '')
+    setRegisterDocument(selected.client_document || '')
+    setRegisterOpen(true)
+  }
+
+  const registerClient = async event => {
+    event.preventDefault()
+    if (!selected || !registerName.trim() || registering) return
+    try {
+      setRegistering(true)
+      const result = await chatApi(`/api/conversations/${selected.id}/register-client`, {
+        method: 'POST',
+        body: JSON.stringify({ name: registerName.trim(), email: registerEmail.trim() || null, document: registerDocument.trim() || null }),
+      })
+      setConversations(current => current.map(item => String(item.id) === String(selected.id) ? { ...item, ...result, is_registered_client: 1 } : item))
+      setRegisterOpen(false)
+      setSyncMessage(`${registerName.trim()} foi cadastrado como cliente.`)
+      setError('')
+    } catch (exception) {
+      setError(exception.message)
+    } finally {
+      setRegistering(false)
+    }
+  }
+
   const connectionLabel = apiState === 'ready' ? 'API conectada' : apiState === 'error' ? 'API indisponível' : 'Conectando à API'
 
   return <section className="chat-beta-workspace">
@@ -265,7 +302,7 @@ function ChatBetaWorkspace({ openOrder }) {
       </div>
     </div>
 
-    <div className="chat-beta-api-notice"><AlertTriangle size={17} /><span><b>Webhook conectado para novas mensagens.</b> Use “Sincronizar WhatsApp” para trazer as conversas que já existiam no WA-AKG. Esta tela também atualiza novas mensagens automaticamente.</span></div>
+    <div className="chat-beta-api-notice"><AlertTriangle size={17} /><span><b>WhatsApp conectado.</b> Os contatos aparecem aqui sem virar cliente automaticamente. Use “Cadastrar cliente” somente quando quiser criar o cadastro no Fix.io.</span></div>
     {syncMessage && <div className="chat-beta-sync-message"><RefreshCw size={15} />{syncMessage}</div>}
 
     <div className="chat-beta-layout">
@@ -293,7 +330,7 @@ function ChatBetaWorkspace({ openOrder }) {
         {selected ? <>
           <header className="chat-beta-thread-head">
             <div className="chat-beta-thread-person"><ChatAvatar conversation={selected} large /><div><h2>{selected.client_name}</h2><span><i className={`chat-beta-status-dot ${selected.status === 'closed' ? 'offline' : 'online'}`} />{selected.status === 'closed' ? 'Atendimento encerrado' : 'Atendimento aberto'} · {displayPhone(selected.client_phone)}</span></div></div>
-            <div className="chat-beta-thread-actions"><button type="button" className="chat-beta-icon-button" title="Ligar para cliente" disabled={!selected.client_phone}><Phone size={17} /></button><button type="button" className="chat-beta-icon-button" title="Mais opções"><MoreHorizontal size={18} /></button></div>
+            <div className="chat-beta-thread-actions">{!Number(selected.is_registered_client) && !String(selected.client_phone || '').endsWith('@g.us') && <button type="button" className="chat-beta-register-button" onClick={openRegisterClient}><UserPlus size={15} />Cadastrar cliente</button>}<button type="button" className="chat-beta-icon-button" title="Ligar para cliente" disabled={!selected.client_phone}><Phone size={17} /></button><button type="button" className="chat-beta-icon-button" title="Mais opções"><MoreHorizontal size={18} /></button></div>
           </header>
           <div className="chat-beta-thread-context"><ClipboardList size={16} /><span><b>OS {formatOrder(selected)}</b><small>{selected.service_order_status || 'Conversa sem OS vinculada'}</small></span><button type="button" className="text-button" disabled={!selected.service_order_number} onClick={() => openOrder?.(selected.service_order_number)}>Abrir OS <ChevronDown size={14} /></button></div>
           <div className="chat-beta-messages">
@@ -312,10 +349,10 @@ function ChatBetaWorkspace({ openOrder }) {
       <aside className="chat-beta-details panel">
         {selected ? <>
           <div className="chat-beta-details-head"><h2>Detalhes</h2><button type="button" className="chat-beta-icon-button" title="Mais opções"><MoreHorizontal size={18} /></button></div>
-          <div className="chat-beta-contact"><ChatAvatar conversation={selected} large /><h3>{selected.client_name}</h3><span>{displayPhone(selected.client_phone)}</span><small><i className={`chat-beta-status-dot ${selected.status === 'closed' ? 'offline' : 'online'}`} />Contato do Fix.io</small></div>
+          <div className="chat-beta-contact"><ChatAvatar conversation={selected} large /><h3>{selected.client_name}</h3><span>{displayPhone(selected.client_phone)}</span><small><i className={`chat-beta-status-dot ${selected.status === 'closed' ? 'offline' : 'online'}`} />{Number(selected.is_registered_client) ? 'Cliente cadastrado' : 'Contato do WhatsApp'}</small>{!Number(selected.is_registered_client) && !String(selected.client_phone || '').endsWith('@g.us') && <button type="button" className="primary chat-beta-register-wide" onClick={openRegisterClient}><UserPlus size={15} />Cadastrar cliente</button>}</div>
           <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><ClipboardList size={15} /><span>Ordem vinculada</span></div><div className="chat-beta-order-card"><div><b>{formatOrder(selected)}</b><small>{selected.service_order_status || 'Sem ordem vinculada'}</small></div><button type="button" className="chat-beta-link-button" disabled={!selected.service_order_number} onClick={() => openOrder?.(selected.service_order_number)}>Ver OS</button></div></div>
-          <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><UserRound size={15} /><span>Dados do cliente</span></div><dl><div><dt>Telefone</dt><dd>{displayPhone(selected.client_phone)}</dd></div><div><dt>E-mail</dt><dd>{selected.client_email || 'Não informado'}</dd></div><div><dt>Documento</dt><dd>{selected.client_document || 'Não informado'}</dd></div></dl></div>
-          <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><Clock size={15} /><span>Integração</span></div><div className="chat-beta-next-step"><span>Webhook do WA-AKG</span><small>Configure o webhook de recebimento no gateway. Depois disso, novas mensagens aparecerão aqui automaticamente.</small></div></div>
+          <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><UserRound size={15} /><span>{Number(selected.is_registered_client) ? 'Dados do cliente' : 'Dados do contato'}</span></div><dl><div><dt>Telefone</dt><dd>{displayPhone(selected.client_phone)}</dd></div><div><dt>E-mail</dt><dd>{selected.client_email || 'Não informado'}</dd></div><div><dt>Documento</dt><dd>{selected.client_document || 'Não informado'}</dd></div></dl></div>
+          <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><Clock size={15} /><span>Integração</span></div><div className="chat-beta-next-step"><span>{Number(selected.is_registered_client) ? 'Cliente vinculado' : 'Contato não cadastrado'}</span><small>{Number(selected.is_registered_client) ? 'Este contato já está vinculado ao cadastro de clientes.' : 'As mensagens ficam disponíveis no Chat Beta sem criar cliente. Cadastre apenas quando necessário.'}</small></div></div>
         </> : <div className="chat-beta-empty-details"><UserRound size={24} /><span>Os dados do cliente aparecerão aqui.</span></div>}
       </aside>
     </div>
@@ -327,6 +364,17 @@ function ChatBetaWorkspace({ openOrder }) {
         <label className="chat-beta-form-field"><span>OS vinculada <small>(opcional)</small></span><select value={newOrderId} onChange={event => setNewOrderId(event.target.value)} disabled={!newClientId}><option value="">Sem OS vinculada</option>{orders.filter(order => String(order.client_id) === String(newClientId)).map(order => <option key={order.id} value={order.id}>#{order.id} · {order.problem_description}</option>)}</select></label>
         {error && <p className="chat-beta-modal-error"><AlertTriangle size={15} />{error}</p>}
         <div className="chat-beta-new-conversation-footer"><button type="button" className="outline" onClick={() => setNewConversationOpen(false)}>Cancelar</button><button className="primary" disabled={(!newClientId && !newContactPhone.trim()) || creatingConversation}>{creatingConversation ? 'Criando...' : 'Criar conversa'}</button></div>
+      </form>
+    </div>}
+    {registerOpen && selected && <div className="chat-beta-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setRegisterOpen(false) }}>
+      <form className="panel chat-beta-new-conversation" onSubmit={registerClient}>
+        <div className="chat-beta-new-conversation-head"><div><p className="eyebrow">CLIENTE</p><h2>Cadastrar cliente</h2><p>O contato do WhatsApp será vinculado ao cadastro do Fix.io.</p></div><button type="button" className="chat-beta-icon-button" onClick={() => setRegisterOpen(false)}><span aria-hidden="true">×</span></button></div>
+        <label className="chat-beta-form-field"><span>Nome</span><input value={registerName} onChange={event => setRegisterName(event.target.value)} placeholder="Nome do cliente" required /></label>
+        <label className="chat-beta-form-field"><span>Telefone WhatsApp</span><input value={displayPhone(selected.client_phone)} readOnly /></label>
+        <label className="chat-beta-form-field"><span>E-mail <small>(opcional)</small></span><input type="email" value={registerEmail} onChange={event => setRegisterEmail(event.target.value)} placeholder="cliente@email.com" /></label>
+        <label className="chat-beta-form-field"><span>CPF/CNPJ <small>(opcional)</small></span><input value={registerDocument} onChange={event => setRegisterDocument(event.target.value)} placeholder="Documento do cliente" /></label>
+        {error && <p className="chat-beta-modal-error"><AlertTriangle size={15} />{error}</p>}
+        <div className="chat-beta-new-conversation-footer"><button type="button" className="outline" onClick={() => setRegisterOpen(false)}>Cancelar</button><button className="primary" disabled={!registerName.trim() || registering}>{registering ? 'Cadastrando...' : 'Cadastrar cliente'}</button></div>
       </form>
     </div>}
   </section>

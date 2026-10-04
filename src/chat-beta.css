@@ -64,6 +64,7 @@
 .chat-beta-status-dot.away{background:#e1a33f;box-shadow:0 0 0 3px #e1a33f20}
 .chat-beta-status-dot.offline{background:#aab5bf}
 .chat-beta-thread-actions{display:flex;gap:3px}
+.chat-beta-register-button{display:inline-flex;align-items:center;gap:5px;height:31px;padding:0 9px;border:1px solid #bfe5d9;border-radius:7px;background:#effaf6;color:#1c9078;font:700 10px 'DM Sans';cursor:pointer}.chat-beta-register-button:hover{background:#dff5ed}
 .chat-beta-thread-context{display:flex;align-items:center;gap:8px;padding:9px 17px;border-bottom:1px solid #edf1f2;background:#f5fbf9;color:#218d76}
 .chat-beta-thread-context>span{display:grid;gap:2px;min-width:0}
 .chat-beta-thread-context b{color:#31536a;font-size:10px}
@@ -100,6 +101,7 @@
 .chat-beta-contact h3{margin:10px 0 3px;color:#2b3c55;font:800 14px Manrope}
 .chat-beta-contact>span{color:#7e8c9d;font-size:10px}
 .chat-beta-contact small{display:flex;align-items:center;gap:5px;margin-top:8px;color:#8e9aa8;font-size:9px}
+.chat-beta-register-wide{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 11px;font-size:10px}
 .chat-beta-detail-section{padding:15px;border-top:1px solid #edf0f3}
 .chat-beta-section-label{display:flex;align-items:center;gap:7px;margin-bottom:10px;color:#218e77;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
 .chat-beta-order-card{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:10px;border:1px solid #dfece8;border-radius:8px;background:#f7fcfa}
