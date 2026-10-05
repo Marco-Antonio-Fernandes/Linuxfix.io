@@ -48,7 +48,34 @@ const formatTime = value => {
 }
 
 function ChatAvatar({ conversation, large = false }) {
-  return <span className={`chat-beta-avatar ${avatarColor(conversation?.id)}${large ? ' large' : ''}`}>{initials(conversation?.client_name)}</span>
+  const [src, setSrc] = useState('')
+  const profilePath = String(conversation?.whatsapp_profile_pic || '').trim()
+
+  useEffect(() => {
+    if (!profilePath) {
+      setSrc('')
+      return undefined
+    }
+    const controller = new AbortController()
+    let objectUrl = ''
+    const token = localStorage.getItem('fixio_token')
+    fetch(`${API}/api/integrations/whatsapp/media?path=${encodeURIComponent(profilePath)}`, {
+      signal: controller.signal,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(response => {
+      if (!response.ok) throw new Error('Foto indisponível')
+      return response.blob()
+    }).then(blob => {
+      objectUrl = URL.createObjectURL(blob)
+      setSrc(objectUrl)
+    }).catch(() => {})
+    return () => {
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [conversation?.id, profilePath])
+
+  return <span className={`chat-beta-avatar ${avatarColor(conversation?.id)}${large ? ' large' : ''}`}>{src ? <img src={src} alt="" /> : initials(conversation?.client_name)}</span>
 }
 
 function WhatsAppMedia({ message }) {
@@ -91,10 +118,13 @@ function WhatsAppMedia({ message }) {
 
 function MessageContent({ message }) {
   const body = String(message?.body || '')
-  const isMediaPlaceholder = /^\[(image|audio|voice|video|sticker|document|contact|location|view[ _-]?once) recebido\]$/i.test(body)
+  const isViewOnce = /visualiza(?:ção|cao) única|view[ _-]?once/i.test(body)
+  const mediaType = String(message?.media_type || '').toLowerCase()
+  const viewOnceBody = isViewOnce ? (mediaType.includes('video') ? 'Vídeo de visualização única' : 'Foto de visualização única') : body
+  const isMediaPlaceholder = !isViewOnce && /^\[(image|audio|voice|video|sticker|document|contact|location) recebido\]$/i.test(body)
   return <>
-    {message?.media_url && <WhatsAppMedia message={message} />}
-    {body && !isMediaPlaceholder && <p>{body}</p>}
+    {!isViewOnce && message?.media_url && <WhatsAppMedia message={message} />}
+    {viewOnceBody && !isMediaPlaceholder && <p>{viewOnceBody}</p>}
   </>
 }
 

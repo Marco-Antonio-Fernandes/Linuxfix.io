@@ -38,6 +38,7 @@
 .chat-beta-conversation:hover{background:#f8fcfb}
 .chat-beta-conversation.selected{background:#eef9f6;box-shadow:inset 3px 0 #2aa58e}
 .chat-beta-avatar{display:grid;place-items:center;flex:0 0 35px;width:35px;height:35px;border-radius:50%;color:#fff;font-size:10px;font-weight:800;letter-spacing:.02em}
+.chat-beta-avatar img{display:block;width:100%;height:100%;border-radius:inherit;object-fit:cover}
 .chat-beta-avatar.large{width:39px;height:39px;flex-basis:39px;font-size:11px}
 .chat-beta-avatar.mint{background:linear-gradient(145deg,#55bea6,#218e7b)}
 .chat-beta-avatar.blue{background:linear-gradient(145deg,#6b9bde,#4269ae)}
