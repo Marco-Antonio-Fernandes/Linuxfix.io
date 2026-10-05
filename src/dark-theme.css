@@ -11,3 +11,18 @@ button.danger:hover:not(:disabled),.danger:hover:not(:disabled),.table-action.da
 button.outline:hover:not(:disabled),button.filter:hover:not(:disabled),.outline:hover:not(:disabled),.filter:hover:not(:disabled){background-color:#173039;color:#e0f5ef;border-color:#3e9f8b}
 button.icon-button:hover:not(:disabled),.icon-button:hover:not(:disabled){background-color:#17272e;color:#e5f3ef;border-color:#2d4b52}
 input:hover,select:hover,textarea:hover{background-color:#101c22!important;border-color:#3a5960!important;color:#e2edeb}
+
+/* Financeiro: elimina superfícies brancas dos cartões e campos próprios do módulo. */
+.pix-connection-card,.pix-inbox-panel,.finance-categories-panel,.cash-panel,.cash-history,.dashboard-finance-report .panel{background:#111a21!important;border-color:#1f3038!important;color:#dce7e8}
+.pix-connection-card{background:linear-gradient(120deg,#111f26,#111a21)!important}
+.pix-icon{background:#12342f;color:#67d4b5}.pix-connection-copy h2,.pix-inbox-panel h2{color:#edf6f4}.pix-connection-copy p{color:#b7c9c8}.pix-connection-copy small{color:#82999c}
+.pix-connection-status{background:#3a2f16;color:#e3b65d}.pix-connection-status.connected{background:#123c35;color:#72d5b9}
+.pix-inbox-panel.has-pix-pending{border-color:#6e3c3a;box-shadow:0 7px 22px #0004}.pix-pending-count{background:#4b2425;color:#ed958a}
+.pix-review-card,.pix-review-card.outgoing{border-color:#2a4850;background:#0f1d23;color:#dce7e8}.pix-review-card.outgoing{border-left-color:#c5893f;background:#211d14}
+.pix-direction{background:#153c38;color:#6eddbc}.pix-review-card.outgoing .pix-direction{background:#3a2f16;color:#e3b65d}.pix-review-summary>strong{color:#e8f2f0}.pix-review-summary>b{color:#c2d2d1}.pix-review-summary>small{color:#82999c}
+.pix-review-form label span{color:#9aafae}.pix-review-form select,.pix-review-form>input,.category-create input,.category-create select,.inline-form input,.inline-form select{border-color:#2a3d45;background:#0b1319;color:#e2edeb}.pix-review-form select option,.category-create select option,.inline-form select option{background:#111a21;color:#e2edeb}
+.pix-empty{border-color:#285247;background:#102923}.pix-empty-icon{background:#123c35;color:#72d5b9}.pix-empty b{color:#c2dcda}.pix-empty p{color:#82999c}
+.cash-numbers div,.cash-actions form{border-color:#293c44;background:#101b21}.cash-actions b{color:#c2d2d1}.cash-numbers small,.history-row small{color:#82999c}.cash-numbers b,.history-row b{color:#e0ecea}.history-row{border-color:#1e3037}.history-row strong{color:#72d5b9}
+.bar-column small,.rank-info small,.bar-chart small{color:#82999c}.bar-pair .income{background:#31aa91}.bar-pair .expense{background:#d79a4a}.ranking-list .rank{border-color:#1e3037}.rank-info>div:first-child,.rank-info b{color:#dce7e8}.rank-number.green{background:#123c35;color:#72d5b9}.rank-number.yellow{background:#3a2f16;color:#e3b65d}.rank-number.blue{background:#163348;color:#75b6e5}.rank-number.purple{background:#302445;color:#be9be5}
+.category-list>span{border-color:#2a3d45;background:#101b21;color:#c2dcda}.category-list small{color:#82999c}
+.dashboard-finance-chart .grid-lines line{stroke:#263941}.dashboard-finance-chart .chart-y,.dashboard-finance-chart .chart-x{color:#82999c}.chart-summary small{color:#82999c}.chart-summary b{color:#e0ecea}.chart-summary .projection{background:#12342f;color:#72d5b9}

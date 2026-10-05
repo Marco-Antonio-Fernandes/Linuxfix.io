@@ -77,7 +77,7 @@ export function PixReviewPanel() {
       const widget = new PluggyConnect({
         connectToken: token.accessToken,
         ...(!existingItemId ? { selectedConnectorId: MEU_PLUGGY_CONNECTOR_ID } : { updateItem: existingItemId }),
-        theme: 'light',
+        theme: 'dark',
         onSuccess: async ({ item }) => {
           try {
             const itemId = String(item?.id || '').trim()
