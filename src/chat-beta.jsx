@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, RefreshCw, Search, Send, Smile, UserPlus, UserRound } from 'lucide-react'
+import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, Pin, PinOff, RefreshCw, Search, Send, Smile, UserPlus, UserRound, Volume2 } from 'lucide-react'
 import './chat-beta.css'
 
 const API = (import.meta.env.VITE_API_URL || 'https://backfixio.rotatix.com.br').replace(/\/$/, '')
@@ -110,21 +110,22 @@ function WhatsAppMedia({ message }) {
 
   if (!src) return <div className="chat-beta-media-loading">{failed ? 'Mídia não disponível no WhatsApp' : 'Carregando mídia...'}</div>
   const type = String(message?.media_type || '').toLowerCase()
-  if (type.includes('audio') || type.includes('voice')) return <audio className="chat-beta-audio" controls src={src} />
-  if (type.includes('image') || type.includes('sticker')) return <img className="chat-beta-image" src={src} alt={message.media_name || 'Imagem recebida'} />
-  if (type.includes('video')) return <video className="chat-beta-video" controls src={src} />
+  if (type.includes('audio') || type.includes('voice')) return <div className="chat-beta-audio-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Volume2 size={17} /></span><span><b>Áudio recebido</b><small>Mensagem de voz do WhatsApp</small></span></div><audio className="chat-beta-audio" controls src={src} /></div>
+  if (type.includes('image') || type.includes('sticker')) return <div className="chat-beta-media-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Image size={16} /></span><b>Imagem recebida</b></div><img className="chat-beta-image" src={src} alt={message.media_name || 'Imagem recebida'} /></div>
+  if (type.includes('video')) return <div className="chat-beta-media-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><MessageCircle size={16} /></span><b>Vídeo recebido</b></div><video className="chat-beta-video" controls src={src} /></div>
   return <a className="chat-beta-media-link" href={src} target="_blank" rel="noreferrer" download={message.media_name || undefined}>Abrir arquivo recebido</a>
 }
 
 function MessageContent({ message }) {
   const body = String(message?.body || '')
-  const isViewOnce = /visualiza(?:ção|cao) única|view[ _-]?once/i.test(body)
   const mediaType = String(message?.media_type || '').toLowerCase()
+  const isViewOnce = /visualiza(?:ção|cao) única|view[ _-]?once|single[ _-]?view/i.test(body) || /view[ _-]?once|single[ _-]?view/i.test(mediaType)
   const viewOnceBody = isViewOnce ? (mediaType.includes('video') ? 'Vídeo de visualização única' : 'Foto de visualização única') : body
   const isMediaPlaceholder = !isViewOnce && /^\[(image|audio|voice|video|sticker|document|contact|location) recebido\]$/i.test(body)
+  const placeholderBody = isMediaPlaceholder ? ({ image: 'Imagem recebida', audio: 'Áudio recebido', voice: 'Áudio recebido', video: 'Vídeo recebido', sticker: 'Figurinha recebida', document: 'Documento recebido', contact: 'Contato recebido', location: 'Localização recebida' }[body.slice(1, body.indexOf(' ')).toLowerCase()] || 'Mídia recebida') : ''
   return <>
     {!isViewOnce && message?.media_url && <WhatsAppMedia message={message} />}
-    {viewOnceBody && !isMediaPlaceholder && <p>{viewOnceBody}</p>}
+    {(viewOnceBody || placeholderBody) && <p>{viewOnceBody || placeholderBody}</p>}
   </>
 }
 
@@ -155,6 +156,7 @@ function ChatBetaWorkspace({ openOrder }) {
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerDocument, setRegisterDocument] = useState('')
   const [registering, setRegistering] = useState(false)
+  const [markingAllRead, setMarkingAllRead] = useState(false)
   const messagesContainerRef = useRef(null)
 
   const loadConversations = async ({ silent = false } = {}) => {
@@ -274,6 +276,30 @@ function ChatBetaWorkspace({ openOrder }) {
     })
   }, [conversations, filter, query])
 
+  const togglePin = async conversation => {
+    try {
+      const result = await chatApi(`/api/conversations/${conversation.id}/pin`, { method: 'PATCH', body: JSON.stringify({ pinned: !Number(conversation.is_pinned) }) })
+      const updated = result?.conversation || {}
+      setConversations(current => current.map(item => String(item.id) === String(conversation.id) ? { ...item, ...updated, is_pinned: result?.pinned ? 1 : 0 } : item))
+    } catch (exception) {
+      setError(exception.message)
+    }
+  }
+
+  const markAllRead = async () => {
+    if (markingAllRead) return
+    try {
+      setMarkingAllRead(true)
+      const result = await chatApi('/api/conversations/mark-all-read', { method: 'POST' })
+      setConversations(current => current.map(item => ({ ...item, unread_count: 0 })))
+      setSyncMessage(`${Number(result?.count || 0)} mensagem(ns) marcada(s) como lida(s).`)
+    } catch (exception) {
+      setError(exception.message)
+    } finally {
+      setMarkingAllRead(false)
+    }
+  }
+
   const sendMessage = async event => {
     event.preventDefault()
     const body = draft.trim()
@@ -362,19 +388,17 @@ function ChatBetaWorkspace({ openOrder }) {
   return <section className="chat-beta-workspace">
     <div className="chat-beta-titlebar">
       <div>
-        <div className="chat-beta-kicker"><MessageCircle size={15} /> ATENDIMENTO UNIFICADO <span>BETA</span></div>
-        <h1>Chat</h1>
+        <div className="chat-beta-kicker"><MessageCircle size={15} /> WHATSAPP <span>FIX.IO</span></div>
+        <h1>WhatsApp</h1>
         <p>Converse com seus clientes e mantenha cada mensagem ligada à ordem de serviço.</p>
       </div>
       <div className="chat-beta-title-actions">
         <span className={`chat-beta-connection ${apiState}`}><i />{connectionLabel}</span>
         <button type="button" className="outline" onClick={() => void syncWhatsApp()} disabled={syncingWhatsApp}><RefreshCw size={16} className={syncingWhatsApp ? 'spin' : ''} />{syncingWhatsApp ? 'Sincronizando...' : 'Sincronizar WhatsApp'}</button>
+        <button type="button" className="outline" onClick={() => void markAllRead()} disabled={markingAllRead}><CheckCheck size={16} />{markingAllRead ? 'Marcando...' : 'Marcar todas como lidas'}</button>
         <button type="button" className="outline" onClick={() => void openNewConversation()}><MessageCircle size={16} />Nova conversa</button>
       </div>
     </div>
-
-    <div className="chat-beta-api-notice"><AlertTriangle size={17} /><span><b>WhatsApp conectado.</b> Os contatos aparecem aqui sem virar cliente automaticamente. Use “Cadastrar cliente” somente quando quiser criar o cadastro no Fix.io.</span></div>
-    {syncMessage && <div className="chat-beta-sync-message"><RefreshCw size={15} />{syncMessage}</div>}
 
     <div className="chat-beta-layout">
       <aside className="chat-beta-list panel">
@@ -389,11 +413,10 @@ function ChatBetaWorkspace({ openOrder }) {
           <button type="button" className={filter === 'active' ? 'active' : ''} onClick={() => setFilter('active')}>Abertas</button>
         </div>
         <div className="chat-beta-conversation-list">
-          {apiState === 'loading' && !conversations.length ? <div className="chat-beta-empty-list"><Clock size={24} /><b>Carregando conversas...</b><span>Consultando o backend do Fix.io.</span></div> : visibleConversations.length ? visibleConversations.map(conversation => <button type="button" key={conversation.id} className={`chat-beta-conversation ${String(selected?.id) === String(conversation.id) ? 'selected' : ''}`} onClick={() => setSelectedId(conversation.id)}>
-            <ChatAvatar conversation={conversation} />
-            <span className="chat-beta-conversation-copy"><b>{conversation.client_name}</b><small>{conversation.last_message || 'Nenhuma mensagem ainda.'}</small><em>{formatOrder(conversation)} · {conversation.status === 'closed' ? 'encerrada' : 'aberta'}</em></span>
-            <span className="chat-beta-conversation-meta"><small>{formatTime(conversation.last_message_at || conversation.created_at)}</small>{Number(conversation.unread_count) > 0 && <b>{conversation.unread_count}</b>}</span>
-          </button>) : <div className="chat-beta-empty-list"><Search size={24} /><b>{error || 'Nenhuma conversa encontrada'}</b><span>{error ? 'Verifique a API e tente atualizar.' : 'As conversas criadas no backend aparecerão aqui.'}</span></div>}
+          {apiState === 'loading' && !conversations.length ? <div className="chat-beta-empty-list"><Clock size={24} /><b>Carregando conversas...</b><span>Consultando o backend do Fix.io.</span></div> : visibleConversations.length ? visibleConversations.map(conversation => <div key={conversation.id} className={`chat-beta-conversation ${String(selected?.id) === String(conversation.id) ? 'selected' : ''}${Number(conversation.is_pinned) ? ' pinned' : ''}`}>
+            <button type="button" className="chat-beta-conversation-main" onClick={() => setSelectedId(conversation.id)}><ChatAvatar conversation={conversation} /><span className="chat-beta-conversation-copy"><b>{conversation.client_name}</b><small>{conversation.last_message || 'Nenhuma mensagem ainda.'}</small><em>{formatOrder(conversation)} · {conversation.status === 'closed' ? 'encerrada' : 'aberta'}</em></span><span className="chat-beta-conversation-meta"><small>{formatTime(conversation.last_message_at || conversation.created_at)}</small>{Number(conversation.unread_count) > 0 && <b>{conversation.unread_count}</b>}</span></button>
+            <button type="button" className="chat-beta-pin-button" title={Number(conversation.is_pinned) ? 'Desafixar conversa' : 'Fixar conversa'} onClick={() => void togglePin(conversation)}>{Number(conversation.is_pinned) ? <PinOff size={14} /> : <Pin size={14} />}</button>
+          </div>) : <div className="chat-beta-empty-list"><Search size={24} /><b>{error || 'Nenhuma conversa encontrada'}</b><span>{error ? 'Verifique a API e tente atualizar.' : 'As conversas criadas no backend aparecerão aqui.'}</span></div>}
         </div>
       </aside>
 
@@ -423,7 +446,7 @@ function ChatBetaWorkspace({ openOrder }) {
           <div className="chat-beta-contact"><ChatAvatar conversation={selected} large /><h3>{selected.client_name}</h3><span>{displayPhone(selected.client_phone)}</span><small><i className={`chat-beta-status-dot ${selected.status === 'closed' ? 'offline' : 'online'}`} />{Number(selected.is_registered_client) ? 'Cliente cadastrado' : 'Contato do WhatsApp'}</small>{!Number(selected.is_registered_client) && !String(selected.client_phone || '').endsWith('@g.us') && <button type="button" className="primary chat-beta-register-wide" onClick={openRegisterClient}><UserPlus size={15} />Cadastrar cliente</button>}</div>
           <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><ClipboardList size={15} /><span>Ordem vinculada</span></div><div className="chat-beta-order-card"><div><b>{formatOrder(selected)}</b><small>{selected.service_order_status || 'Sem ordem vinculada'}</small></div><button type="button" className="chat-beta-link-button" disabled={!selected.service_order_number} onClick={() => openOrder?.(selected.service_order_number)}>Ver OS</button></div></div>
           <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><UserRound size={15} /><span>{Number(selected.is_registered_client) ? 'Dados do cliente' : 'Dados do contato'}</span></div><dl><div><dt>Telefone</dt><dd>{displayPhone(selected.client_phone)}</dd></div><div><dt>E-mail</dt><dd>{selected.client_email || 'Não informado'}</dd></div><div><dt>Documento</dt><dd>{selected.client_document || 'Não informado'}</dd></div></dl></div>
-          <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><Clock size={15} /><span>Integração</span></div><div className="chat-beta-next-step"><span>{Number(selected.is_registered_client) ? 'Cliente vinculado' : 'Contato não cadastrado'}</span><small>{Number(selected.is_registered_client) ? 'Este contato já está vinculado ao cadastro de clientes.' : 'As mensagens ficam disponíveis no Chat Beta sem criar cliente. Cadastre apenas quando necessário.'}</small></div></div>
+          <div className="chat-beta-detail-section"><div className="chat-beta-section-label"><Clock size={15} /><span>Integração</span></div><div className="chat-beta-next-step"><span>{Number(selected.is_registered_client) ? 'Cliente vinculado' : 'Contato não cadastrado'}</span><small>{Number(selected.is_registered_client) ? 'Este contato já está vinculado ao cadastro de clientes.' : 'As mensagens ficam disponíveis no WhatsApp sem criar cliente.'}</small></div></div>
         </> : <div className="chat-beta-empty-details"><UserRound size={24} /><span>Os dados do cliente aparecerão aqui.</span></div>}
       </aside>
     </div>

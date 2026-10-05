@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Bell, BellRing, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileCode2, LayoutDashboard, Laptop, LogOut, Menu, MessageCircle, MonitorPlay, PanelLeftClose, PanelLeftOpen, Plus, Share2, ShoppingCart, Users, Wrench, X } from 'lucide-react'
+import { Bell, BellRing, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileCode2, LayoutDashboard, Laptop, LogOut, Menu, MessageCircle, MonitorPlay, PanelLeftClose, PanelLeftOpen, Plus, Share2, ShoppingCart, Users, X } from 'lucide-react'
 import './app-shell.css'
+import fixioMark from './fixio-mark.svg'
 
 const navigation = [
   ['dashboard', LayoutDashboard, 'Dashboard'],
@@ -10,7 +11,6 @@ const navigation = [
   ['finance', CircleDollarSign, 'Financeiro'],
   ['inventory', Boxes, 'Estoque'],
   ['whatsapp', MessageCircle, 'WhatsApp'],
-  ['chat-beta', MessageCircle, 'Chat (beta)'],
   ['techunion', MonitorPlay, 'Bancada'],
   ['autounattend', FileCode2, 'Auto Atende'],
 ]
@@ -118,7 +118,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
   return <div className={`app app-shell${collapsed ? ' app-shell-collapsed' : ''}`}>
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}${mobileOpen ? ' open' : ''}`}>
       <div className="brand">
-        <div className="brand-mark"><Wrench size={19}/></div>
+        <div className="brand-mark"><img src={fixioMark} alt="" /></div>
         <b className="brand-label">fix<span>.io</span></b>
         <button className="sidebar-collapse" onClick={() => setCollapsed(value => !value)} title={collapsed ? 'Expandir menu' : 'Recolher menu'} aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>
           {collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>} 
@@ -167,7 +167,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
           <span className="pix-toast-icon"><BellRing size={17} /></span><span><b>Novo Pix identificado</b><small>{pixToast.direction === 'in' ? 'Entrada' : 'Saída'} de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(pixToast.amount_cents) || 0) / 100)} · classifique no Financeiro</small></span><X size={15} onClick={event => { event.stopPropagation(); setPixToast(null) }} />
         </button>}
       </header>
-      <main className={`content${page === 'whatsapp' ? ' whatsapp-content' : page === 'chat-beta' ? ' chat-beta-content' : page === 'techunion' ? ' tech-union-content' : ''}`}>{children}</main>
+      <main className={`content${page === 'whatsapp' || page === 'chat-beta' ? ' chat-beta-content' : page === 'techunion' ? ' tech-union-content' : ''}`}>{children}</main>
     </div>
   </div>
 }

@@ -6,7 +6,7 @@ import { CustomerPortalEnhanced, FinanceWorkspaceEnhanced, FinancialDashboardPan
 import { AutoAtendeWorkspace } from './auto-atende.jsx'
 import { TechUnionWorkspace } from './tech-union.jsx'
 import { ChatBetaWorkspace } from './chat-beta.jsx'
-import { useNativeViewport } from './use-native-viewport.js'
+import './dark-theme.css'
 const API=(import.meta.env.VITE_API_URL||'https://backfixio.rotatix.com.br').replace(/\/$/,'')
 const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(v)||0)/100)
 const fmt=v=>v?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium'}).format(new Date(v)):'—'
@@ -112,34 +112,9 @@ export default function App(){
   const logout=()=>{localStorage.removeItem('fixio_token');localStorage.removeItem('fixio.session');localStorage.removeItem('fixio.customer_cpf');setEntered(false);setCustomerCpf('');setPage('dashboard')}
   if(!entered&&!customerCpf)return <ClientPortalEntry onAdminLogin={({mode})=>{if(mode==='admin'){localStorage.setItem('fixio.session','admin');setEntered(true)}}} onCustomerLogin={({cpf})=>{localStorage.setItem('fixio.customer_cpf',cpf);setCustomerCpf(cpf)}}/>
   if(customerCpf&&!entered)return <div className="customer-portal-container"><button type="button" className="portal-back-button" onClick={logout}><ArrowLeft size={16}/>Voltar</button><CustomerPortalEnhanced cpf={customerCpf} onLogout={logout}/></div>
-  let view=page==='techunion'?<TechUnionWorkspace/>:page==='chat-beta'?<ChatBetaWorkspace openOrder={open}/>:page==='whatsapp'?<WhatsAppWorkspace/>:error?<div className="api-error"><AlertTriangle size={18}/>Não foi possível conectar a {API}: {error}<button onClick={load}>Tentar novamente</button></div>:loading?<Empty>Carregando dados reais...</Empty>:page==='dashboard'?<Dashboard data={data} orders={orders} setPage={setPage} open={open}/>:page==='finance'?<FinanceWorkspaceEnhanced orders={orders}/>:page==='inventory'?<InventoryWorkspaceEnhanced orders={orders}/>:page==='sale'?<SaleWorkspace/>:page==='autounattend'?<AutoAtendeWorkspace/>:page==='detail'?<Detail id={id} back={()=>setPage('orders')} refresh={load}/>:page==='new-client'?<Create kind="client" clients={clients} devices={devices} done={load} back={()=>setPage('clients')}/>:page==='new-device'?<Create kind="device" clients={clients} devices={devices} done={load} back={()=>setPage('devices')}/>:page==='new-order'?<OrderStart clients={clients} devices={devices} done={load} back={()=>setPage('orders')}/>:<List kind={page} clients={clients} devices={devices} orders={orders} setPage={setPage} open={open}/>
+  let view=page==='techunion'?<TechUnionWorkspace/>:page==='chat-beta'||page==='whatsapp'?<ChatBetaWorkspace openOrder={open}/>:error?<div className="api-error"><AlertTriangle size={18}/>Não foi possível conectar a {API}: {error}<button onClick={load}>Tentar novamente</button></div>:loading?<Empty>Carregando dados reais...</Empty>:page==='dashboard'?<Dashboard data={data} orders={orders} setPage={setPage} open={open}/>:page==='finance'?<FinanceWorkspaceEnhanced orders={orders}/>:page==='inventory'?<InventoryWorkspaceEnhanced orders={orders}/>:page==='sale'?<SaleWorkspace/>:page==='autounattend'?<AutoAtendeWorkspace/>:page==='detail'?<Detail id={id} back={()=>setPage('orders')} refresh={load}/>:page==='new-client'?<Create kind="client" clients={clients} devices={devices} done={load} back={()=>setPage('clients')}/>:page==='new-device'?<Create kind="device" clients={clients} devices={devices} done={load} back={()=>setPage('devices')}/>:page==='new-order'?<OrderStart clients={clients} devices={devices} done={load} back={()=>setPage('orders')}/>:<List kind={page} clients={clients} devices={devices} orders={orders} setPage={setPage} open={open}/>
   const openWhatsApp=()=>{setPage('whatsapp');setWhatsAppUnread(0);setNotifications(current=>({...current,unread_count:0}))}
    return <AppShell page={page} setPage={pageName=>{setPage(pageName);if(pageName==='whatsapp'){setWhatsAppUnread(0);setNotifications(current=>({...current,unread_count:0}))}}} notifications={notifications} financeNotifications={financeNotifications} onOpenWhatsApp={openWhatsApp} onOpenFinance={()=>setPage('finance')} onShareOrder={shareOrder} onLogout={logout}>{view}</AppShell>
-}
-
-function WhatsAppWorkspace(){
-  const viewport=useRef(null)
-  const [status,setStatus]=useState({state:'loading',message:'Conectando ao WhatsApp…'})
-  useNativeViewport(viewport, 'whatsapp-bounds')
-  useEffect(()=>{
-    const bridge=window.chrome?.webview
-    if(!bridge)return
-    const receive=event=>{
-      if(event.data?.type==='desktop-status'&&event.data.target==='whatsapp')setStatus(event.data)
-    }
-    bridge.addEventListener('message',receive)
-    return()=>bridge.removeEventListener('message',receive)
-  },[])
-  return <section className="whatsapp-workspace">
-    <div aria-live="polite" className="whatsapp-workspace-head">
-      <div><p className="eyebrow">ATENDIMENTO</p><h1>WhatsApp</h1>
-      <p className="muted">{window.chrome?.webview ? status.message : 'Abra o cliente Fix.io Linux para usar o WhatsApp integrado.'}</p></div>
-      <button className="outline" onClick={()=>window.chrome?.webview?.postMessage({type:'whatsapp-retry'})}>Recarregar WhatsApp</button>
-    </div>
-    <div ref={viewport} className="whatsapp-webview-host" aria-label="WhatsApp Web">
-      {status.state==='error' && <p role="alert">{status.message}</p>}
-    </div>
-  </section>
 }
 
 function SecureLogin({onLogin,initialAdmin=false}){

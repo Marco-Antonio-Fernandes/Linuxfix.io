@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Fix.io</title>
+  <desc id="desc">Marca Fix.io com raio central</desc>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="110" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6be2be"/>
+      <stop offset="1" stop-color="#1f806f"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="77" y1="24" x2="45" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08201b"/>
+      <stop offset="1" stop-color="#0b1217"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="31" fill="#0b151b"/>
+  <rect x="8" y="8" width="112" height="112" rx="27" fill="url(#bg)"/>
+  <path d="M72.8 21 38 70h24l-7.1 37L90 57H66.5L72.8 21Z" fill="url(#bolt)"/>
+  <circle cx="98" cy="30" r="6" fill="#d5fff0" opacity=".85"/>
+</svg>
