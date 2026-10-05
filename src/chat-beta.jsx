@@ -32,8 +32,8 @@ const FIXIO_TIME_ZONE = 'America/Sao_Paulo'
 const parseFixioDate = value => {
   if (!value) return null
   const raw = String(value).trim()
-  const utcDateTime = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/.exec(raw)
-  const date = new Date(utcDateTime ? `${utcDateTime[1]}T${utcDateTime[2]}Z` : raw)
+  const localDateTime = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/.exec(raw)
+  const date = new Date(localDateTime ? `${localDateTime[1]}T${localDateTime[2]}-03:00` : raw)
   return Number.isNaN(date.getTime()) ? null : date
 }
 const formatTime = value => {
@@ -157,6 +157,7 @@ function ChatBetaWorkspace({ openOrder }) {
   const [registerDocument, setRegisterDocument] = useState('')
   const [registering, setRegistering] = useState(false)
   const [markingAllRead, setMarkingAllRead] = useState(false)
+  const [conversationMenuOpen, setConversationMenuOpen] = useState(false)
   const messagesContainerRef = useRef(null)
 
   const loadConversations = async ({ silent = false } = {}) => {
@@ -404,7 +405,13 @@ function ChatBetaWorkspace({ openOrder }) {
       <aside className="chat-beta-list panel">
         <div className="chat-beta-list-head">
           <div><h2>Conversas</h2><span>{conversations.length} atendimento(s)</span></div>
-          <button type="button" className="chat-beta-icon-button" title="Atualizar conversas" onClick={() => void loadConversations()}><MoreHorizontal size={18} /></button>
+          <div className="chat-beta-more-wrap">
+            <button type="button" className="chat-beta-icon-button" title="Mais opções" aria-label="Mais opções" aria-expanded={conversationMenuOpen} onClick={() => setConversationMenuOpen(current => !current)}><MoreHorizontal size={18} /></button>
+            {conversationMenuOpen && <div className="chat-beta-more-menu" role="menu">
+              <button type="button" role="menuitem" onClick={() => { setConversationMenuOpen(false); void markAllRead() }} disabled={markingAllRead}><CheckCheck size={15} />{markingAllRead ? 'Marcando...' : 'Marcar tudo como lido'}{unreadCount > 0 && <b>{unreadCount}</b>}</button>
+              <button type="button" role="menuitem" onClick={() => { setConversationMenuOpen(false); void loadConversations() }}><RefreshCw size={15} />Atualizar conversas</button>
+            </div>}
+          </div>
         </div>
         <label className="chat-beta-search"><Search size={16} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar conversa..." /></label>
         <div className="chat-beta-filters" role="tablist" aria-label="Filtros de conversa">
