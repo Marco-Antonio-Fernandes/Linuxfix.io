@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, RefreshCw, Search, Send, Smile, UserPlus, UserRound } from 'lucide-react'
 import './chat-beta.css'
 
@@ -155,6 +155,7 @@ function ChatBetaWorkspace({ openOrder }) {
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerDocument, setRegisterDocument] = useState('')
   const [registering, setRegistering] = useState(false)
+  const messagesContainerRef = useRef(null)
 
   const loadConversations = async ({ silent = false } = {}) => {
     if (!silent) setApiState('loading')
@@ -253,6 +254,15 @@ function ChatBetaWorkspace({ openOrder }) {
       window.clearInterval(interval)
     }
   }, [selectedId])
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container || loadingMessages) return undefined
+    const scrollToLatest = () => { container.scrollTop = container.scrollHeight }
+    scrollToLatest()
+    const timer = window.setTimeout(scrollToLatest, 250)
+    return () => window.clearTimeout(timer)
+  }, [selectedId, messages.length, loadingMessages])
 
   const unreadCount = conversations.reduce((total, item) => total + Number(item.unread_count || 0), 0)
   const visibleConversations = useMemo(() => {
@@ -394,7 +404,7 @@ function ChatBetaWorkspace({ openOrder }) {
             <div className="chat-beta-thread-actions">{!Number(selected.is_registered_client) && !String(selected.client_phone || '').endsWith('@g.us') && <button type="button" className="chat-beta-register-button" onClick={openRegisterClient}><UserPlus size={15} />Cadastrar cliente</button>}<button type="button" className="chat-beta-icon-button" title="Ligar para cliente" disabled={!selected.client_phone}><Phone size={17} /></button><button type="button" className="chat-beta-icon-button" title="Mais opções"><MoreHorizontal size={18} /></button></div>
           </header>
           <div className="chat-beta-thread-context"><ClipboardList size={16} /><span><b>OS {formatOrder(selected)}</b><small>{selected.service_order_status || 'Conversa sem OS vinculada'}</small></span><button type="button" className="text-button" disabled={!selected.service_order_number} onClick={() => openOrder?.(selected.service_order_number)}>Abrir OS <ChevronDown size={14} /></button></div>
-          <div className="chat-beta-messages">
+          <div className="chat-beta-messages" ref={messagesContainerRef}>
             <div className="chat-beta-day-divider"><span>Histórico</span></div>
             {loadingMessages ? <div className="chat-beta-message-loading"><Clock size={18} />Carregando mensagens...</div> : messages.length ? messages.map(message => <div key={message.id} className={`chat-beta-message-row ${message.sender_type === 'admin' ? 'outgoing' : 'incoming'}`}><div className="chat-beta-message"><MessageContent message={message} /><small>{formatTime(message.created_at)}{message.sender_type === 'admin' && <CheckCheck size={13} className="read" />}</small></div></div>) : <div className="chat-beta-message-loading"><MessageCircle size={22} />Nenhuma mensagem nesta conversa ainda.</div>}
             {messageError && <div className="chat-beta-message-error"><AlertTriangle size={15} />{messageError}</div>}
