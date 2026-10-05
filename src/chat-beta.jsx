@@ -53,10 +53,13 @@ function ChatAvatar({ conversation, large = false }) {
 
 function WhatsAppMedia({ message }) {
   const [src, setSrc] = useState('')
+  const [failed, setFailed] = useState(false)
   const mediaPath = String(message?.media_url || '').trim()
 
   useEffect(() => {
     if (!mediaPath) return undefined
+    setSrc('')
+    setFailed(false)
     const controller = new AbortController()
     let objectUrl = ''
     const token = localStorage.getItem('fixio_token')
@@ -69,14 +72,16 @@ function WhatsAppMedia({ message }) {
     }).then(blob => {
       objectUrl = URL.createObjectURL(blob)
       setSrc(objectUrl)
-    }).catch(() => {})
+    }).catch(error => {
+      if (error?.name !== 'AbortError') setFailed(true)
+    })
     return () => {
       controller.abort()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [message?.id, mediaPath])
 
-  if (!src) return <div className="chat-beta-media-loading">Carregando mídia...</div>
+  if (!src) return <div className="chat-beta-media-loading">{failed ? 'Mídia não disponível no WhatsApp' : 'Carregando mídia...'}</div>
   const type = String(message?.media_type || '').toLowerCase()
   if (type.includes('audio') || type.includes('voice')) return <audio className="chat-beta-audio" controls src={src} />
   if (type.includes('image') || type.includes('sticker')) return <img className="chat-beta-image" src={src} alt={message.media_name || 'Imagem recebida'} />
@@ -86,7 +91,7 @@ function WhatsAppMedia({ message }) {
 
 function MessageContent({ message }) {
   const body = String(message?.body || '')
-  const isMediaPlaceholder = /^\[(image|audio|voice|video|sticker|document|contact|location) recebido\]$/i.test(body)
+  const isMediaPlaceholder = /^\[(image|audio|voice|video|sticker|document|contact|location|view[ _-]?once) recebido\]$/i.test(body)
   return <>
     {message?.media_url && <WhatsAppMedia message={message} />}
     {body && !isMediaPlaceholder && <p>{body}</p>}
