@@ -120,20 +120,33 @@ function ChatBetaWorkspace({ openOrder }) {
       setSelectedId(current => current && rows.some(item => String(item.id) === String(current)) ? current : rows[0]?.id || null)
       setError('')
       setApiState('ready')
+      return rows
     } catch (exception) {
       setError(exception.message)
       setApiState('error')
+      return []
     }
   }
 
+  const syncProgressLabel = state => {
+    const progress = state?.progress || {}
+    const done = Number(progress.chatsDone || 0)
+    const total = Number(progress.chatsTotal || 0)
+    const imported = Number(progress.messagesImported || 0)
+    const found = Number(progress.messagesFound || 0)
+    const current = progress.currentChat ? ` · ${progress.currentChat}` : ''
+    return total ? `Importando ${done}/${total} conversa(s) · ${imported}/${found} mensagem(ns)${current}` : 'Preparando importação completa do WhatsApp...'
+  }
+
   const waitForWhatsAppSync = async () => {
-    for (let attempt = 0; attempt < 240; attempt++) {
+    for (let attempt = 0; attempt < 1800; attempt++) {
       await new Promise(resolve => window.setTimeout(resolve, 1000))
       const state = await chatApi('/api/integrations/whatsapp/sync')
+      if (state.status === 'running') setSyncMessage(syncProgressLabel(state))
       if (state.status === 'finished') return state.result || {}
       if (state.status === 'error') throw Error(state.error || 'A sincronização do WhatsApp falhou.')
     }
-    throw Error('A sincronização continua no servidor. Atualize as conversas novamente em alguns minutos.')
+    throw Error('A sincronização continua no servidor. Ela pode importar um histórico grande; atualize as conversas novamente em alguns minutos.')
   }
 
   const syncWhatsApp = async ({ silent = false } = {}) => {
@@ -146,7 +159,7 @@ function ChatBetaWorkspace({ openOrder }) {
       await loadConversations({ silent: true })
       const errors = Number(result.errors?.length || 0)
       const errorDetails = result.errors?.slice?.(0, 2).join(' | ')
-      setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) importada(s)${result.unregistered ? ` · ${result.unregistered} contato(s) ainda não cadastrado(s)` : ''}${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s): ${errorDetails}` : ''}.`)
+      setSyncMessage(`${result.chats || 0} conversa(s) sincronizada(s), ${result.messages || 0} mensagem(ns) importada(s)${result.media ? ` · ${result.media} mídia(s)` : ''}${result.duplicates ? ` · ${result.duplicates} já existente(s)` : ''}${result.unregistered ? ` · ${result.unregistered} contato(s) ainda não cadastrado(s)` : ''}${result.skippedGroups ? ` · ${result.skippedGroups} grupo(s) ignorado(s)` : ''}${errors ? ` · ${errors} erro(s): ${errorDetails}` : ''}.`)
     } catch (exception) {
       setSyncMessage(exception.message)
     } finally {
@@ -155,11 +168,13 @@ function ChatBetaWorkspace({ openOrder }) {
   }
 
   useEffect(() => {
-    void loadConversations()
-    const syncTimer = window.setTimeout(() => { void syncWhatsApp({ silent: true }) }, 350)
+    let syncTimer
+    void loadConversations().then(rows => {
+      if (!rows.length) syncTimer = window.setTimeout(() => { void syncWhatsApp({ silent: true }) }, 350)
+    })
     const interval = window.setInterval(() => { void loadConversations({ silent: true }) }, 5000)
     return () => {
-      window.clearTimeout(syncTimer)
+      if (syncTimer) window.clearTimeout(syncTimer)
       window.clearInterval(interval)
     }
   }, [])
