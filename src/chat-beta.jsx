@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, Pin, PinOff, RefreshCw, Search, Send, Smile, UserPlus, UserRound, Volume2 } from 'lucide-react'
+import { AlertTriangle, CheckCheck, ChevronDown, ClipboardList, Clock, Download, Image, MessageCircle, MoreHorizontal, Paperclip, Phone, Pin, PinOff, RefreshCw, Search, Send, Smile, UserPlus, UserRound, Volume2, X } from 'lucide-react'
 import './chat-beta.css'
 
 const API = (import.meta.env.VITE_API_URL || 'https://backfixio.rotatix.com.br').replace(/\/$/, '')
@@ -46,6 +46,12 @@ const formatTime = value => {
   if (dateKey === todayKey) return new Intl.DateTimeFormat('pt-BR', { timeZone: FIXIO_TIME_ZONE, hour: '2-digit', minute: '2-digit' }).format(date)
   return new Intl.DateTimeFormat('pt-BR', { timeZone: FIXIO_TIME_ZONE, day: '2-digit', month: '2-digit' }).format(date)
 }
+const formatMessageTime = value => {
+  if (!value) return '—'
+  const date = parseFixioDate(value)
+  if (!date) return String(value)
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: FIXIO_TIME_ZONE, hour: '2-digit', minute: '2-digit' }).format(date)
+}
 
 function ChatAvatar({ conversation, large = false }) {
   const [src, setSrc] = useState('')
@@ -81,6 +87,7 @@ function ChatAvatar({ conversation, large = false }) {
 function WhatsAppMedia({ message }) {
   const [src, setSrc] = useState('')
   const [failed, setFailed] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const mediaPath = String(message?.media_url || '').trim()
 
   useEffect(() => {
@@ -111,7 +118,21 @@ function WhatsAppMedia({ message }) {
   if (!src) return <div className="chat-beta-media-loading">{failed ? 'Mídia não disponível no WhatsApp' : 'Carregando mídia...'}</div>
   const type = String(message?.media_type || '').toLowerCase()
   if (type.includes('audio') || type.includes('voice')) return <div className="chat-beta-audio-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Volume2 size={17} /></span><span><b>Áudio recebido</b><small>Mensagem de voz do WhatsApp</small></span></div><audio className="chat-beta-audio" controls src={src} /></div>
-  if (type.includes('image') || type.includes('sticker')) return <div className="chat-beta-media-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Image size={16} /></span><b>Imagem recebida</b></div><img className="chat-beta-image" src={src} alt={message.media_name || 'Imagem recebida'} /></div>
+  if (type.includes('image') || type.includes('sticker')) return <>
+    <div className="chat-beta-media-card">
+      <div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Image size={16} /></span><b>Imagem recebida</b></div>
+      <button type="button" className="chat-beta-image-button" title="Abrir imagem" onClick={() => setPreviewOpen(true)}><img className="chat-beta-image" src={src} alt={message.media_name || 'Imagem recebida'} /></button>
+    </div>
+    {previewOpen && <div className="chat-beta-image-modal" role="dialog" aria-modal="true" aria-label="Visualização da imagem" onClick={() => setPreviewOpen(false)}>
+      <div className="chat-beta-image-preview" onClick={event => event.stopPropagation()}>
+        <div className="chat-beta-image-preview-actions">
+          <a className="chat-beta-image-download" href={src} download={message.media_name || 'imagem-whatsapp'}><Download size={16} />Baixar</a>
+          <button type="button" className="chat-beta-image-close" title="Fechar imagem" onClick={() => setPreviewOpen(false)}><X size={19} /></button>
+        </div>
+        <img src={src} alt={message.media_name || 'Imagem recebida'} />
+      </div>
+    </div>}
+  </>
   if (type.includes('video')) return <div className="chat-beta-media-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><MessageCircle size={16} /></span><b>Vídeo recebido</b></div><video className="chat-beta-video" controls src={src} /></div>
   return <a className="chat-beta-media-link" href={src} target="_blank" rel="noreferrer" download={message.media_name || undefined}>Abrir arquivo recebido</a>
 }
@@ -436,7 +457,7 @@ function ChatBetaWorkspace({ openOrder }) {
           <div className="chat-beta-thread-context"><ClipboardList size={16} /><span><b>OS {formatOrder(selected)}</b><small>{selected.service_order_status || 'Conversa sem OS vinculada'}</small></span><button type="button" className="text-button" disabled={!selected.service_order_number} onClick={() => openOrder?.(selected.service_order_number)}>Abrir OS <ChevronDown size={14} /></button></div>
           <div className="chat-beta-messages" ref={messagesContainerRef}>
             <div className="chat-beta-day-divider"><span>Histórico</span></div>
-            {loadingMessages ? <div className="chat-beta-message-loading"><Clock size={18} />Carregando mensagens...</div> : messages.length ? messages.map(message => <div key={message.id} className={`chat-beta-message-row ${message.sender_type === 'admin' ? 'outgoing' : 'incoming'}`}><div className="chat-beta-message"><MessageContent message={message} /><small>{formatTime(message.created_at)}{message.sender_type === 'admin' && <CheckCheck size={13} className="read" />}</small></div></div>) : <div className="chat-beta-message-loading"><MessageCircle size={22} />Nenhuma mensagem nesta conversa ainda.</div>}
+            {loadingMessages ? <div className="chat-beta-message-loading"><Clock size={18} />Carregando mensagens...</div> : messages.length ? messages.map(message => <div key={message.id} className={`chat-beta-message-row ${message.sender_type === 'admin' ? 'outgoing' : 'incoming'}`}><div className="chat-beta-message"><MessageContent message={message} /><small>{formatMessageTime(message.created_at)}{message.sender_type === 'admin' && <CheckCheck size={13} className="read" />}</small></div></div>) : <div className="chat-beta-message-loading"><MessageCircle size={22} />Nenhuma mensagem nesta conversa ainda.</div>}
             {messageError && <div className="chat-beta-message-error"><AlertTriangle size={15} />{messageError}</div>}
           </div>
           <form className="chat-beta-composer" onSubmit={sendMessage}>
