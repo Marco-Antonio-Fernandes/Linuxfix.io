@@ -28,13 +28,23 @@ const displayPhone = value => {
   return raw.replace(/@s\.whatsapp\.net$/, '') || 'Telefone não informado'
 }
 const formatOrder = conversation => conversation?.service_order_number ? `#${conversation.service_order_number}` : 'Sem OS vinculada'
+const FIXIO_TIME_ZONE = 'America/Sao_Paulo'
+const parseFixioDate = value => {
+  if (!value) return null
+  const raw = String(value).trim()
+  const utcDateTime = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/.exec(raw)
+  const date = new Date(utcDateTime ? `${utcDateTime[1]}T${utcDateTime[2]}Z` : raw)
+  return Number.isNaN(date.getTime()) ? null : date
+}
 const formatTime = value => {
   if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const today = new Date()
-  if (date.toDateString() === today.toDateString()) return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date)
-  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(date)
+  const date = parseFixioDate(value)
+  if (!date) return String(value)
+  const dateOptions = { timeZone: FIXIO_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }
+  const todayKey = new Intl.DateTimeFormat('en-CA', dateOptions).format(new Date())
+  const dateKey = new Intl.DateTimeFormat('en-CA', dateOptions).format(date)
+  if (dateKey === todayKey) return new Intl.DateTimeFormat('pt-BR', { timeZone: FIXIO_TIME_ZONE, hour: '2-digit', minute: '2-digit' }).format(date)
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: FIXIO_TIME_ZONE, day: '2-digit', month: '2-digit' }).format(date)
 }
 
 function ChatAvatar({ conversation, large = false }) {
