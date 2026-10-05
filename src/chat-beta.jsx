@@ -98,7 +98,8 @@ function WhatsAppMedia({ message }) {
     const controller = new AbortController()
     let objectUrl = ''
     const token = localStorage.getItem('fixio_token')
-    fetch(`${API}/api/integrations/whatsapp/media?path=${encodeURIComponent(mediaPath)}`, {
+    const mediaUrl = mediaPath.startsWith('/uploads/') ? `${API}${mediaPath}` : `${API}/api/integrations/whatsapp/media?path=${encodeURIComponent(mediaPath)}`
+    fetch(mediaUrl, {
       signal: controller.signal,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(response => {
@@ -118,11 +119,12 @@ function WhatsAppMedia({ message }) {
 
   if (!src) return <div className="chat-beta-media-loading">{failed ? 'Mídia não disponível no WhatsApp' : 'Carregando mídia...'}</div>
   const type = String(message?.media_type || '').toLowerCase()
-  if (type.includes('audio') || type.includes('voice')) return <div className="chat-beta-audio-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Volume2 size={17} /></span><span><b>Áudio recebido</b><small>Mensagem de voz do WhatsApp</small></span></div><audio className="chat-beta-audio" controls src={src} /></div>
+  const sentLabel = message?.sender_type === 'admin'
+  if (type.includes('audio') || type.includes('voice')) return <div className="chat-beta-audio-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Volume2 size={17} /></span><span><b>{sentLabel ? 'Áudio enviado' : 'Áudio recebido'}</b><small>Mensagem de voz do WhatsApp</small></span></div><audio className="chat-beta-audio" controls src={src} /></div>
   if (type.includes('image') || type.includes('sticker')) return <>
     <div className="chat-beta-media-card">
-      <div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Image size={16} /></span><b>Imagem recebida</b></div>
-      <button type="button" className="chat-beta-image-button" title="Abrir imagem" onClick={() => setPreviewOpen(true)}><img className="chat-beta-image" src={src} alt={message.media_name || 'Imagem recebida'} /></button>
+      <div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><Image size={16} /></span><b>{sentLabel ? 'Imagem enviada' : 'Imagem recebida'}</b></div>
+      <button type="button" className="chat-beta-image-button" title="Abrir imagem" onClick={() => setPreviewOpen(true)}><img className="chat-beta-image" src={src} alt={message.media_name || (sentLabel ? 'Imagem enviada' : 'Imagem recebida')} /></button>
     </div>
     {previewOpen && <div className="chat-beta-image-modal" role="dialog" aria-modal="true" aria-label="Visualização da imagem" onClick={() => setPreviewOpen(false)}>
       <div className="chat-beta-image-preview" onClick={event => event.stopPropagation()}>
@@ -130,11 +132,11 @@ function WhatsAppMedia({ message }) {
           <a className="chat-beta-image-download" href={src} download={message.media_name || 'imagem-whatsapp'}><Download size={16} />Baixar</a>
           <button type="button" className="chat-beta-image-close" title="Fechar imagem" onClick={() => setPreviewOpen(false)}><X size={19} /></button>
         </div>
-        <img src={src} alt={message.media_name || 'Imagem recebida'} />
+        <img src={src} alt={message.media_name || (sentLabel ? 'Imagem enviada' : 'Imagem recebida')} />
       </div>
     </div>}
   </>
-  if (type.includes('video')) return <div className="chat-beta-media-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><MessageCircle size={16} /></span><b>Vídeo recebido</b></div><video className="chat-beta-video" controls src={src} /></div>
+  if (type.includes('video')) return <div className="chat-beta-media-card"><div className="chat-beta-media-heading"><span className="chat-beta-media-icon"><MessageCircle size={16} /></span><b>{sentLabel ? 'Vídeo enviado' : 'Vídeo recebido'}</b></div><video className="chat-beta-video" controls src={src} /></div>
   return <a className="chat-beta-media-link" href={src} target="_blank" rel="noreferrer" download={message.media_name || undefined}>Abrir arquivo recebido</a>
 }
 
@@ -145,9 +147,10 @@ function MessageContent({ message }) {
   const viewOnceBody = isViewOnce ? (mediaType.includes('video') ? 'Vídeo de visualização única' : 'Foto de visualização única') : body
   const isMediaPlaceholder = !isViewOnce && /^\[(image|audio|voice|video|sticker|document|contact|location) recebido\]$/i.test(body)
   const placeholderBody = isMediaPlaceholder ? ({ image: 'Imagem recebida', audio: 'Áudio recebido', voice: 'Áudio recebido', video: 'Vídeo recebido', sticker: 'Figurinha recebida', document: 'Documento recebido', contact: 'Contato recebido', location: 'Localização recebida' }[body.slice(1, body.indexOf(' ')).toLowerCase()] || 'Mídia recebida') : ''
+  const isSentMediaPlaceholder = Boolean(message?.media_url) && message?.sender_type === 'admin' && /^\[(imagem|vídeo|audio|áudio|arquivo) enviada?o?\]$/i.test(body)
   return <>
     {!isViewOnce && message?.media_url && <WhatsAppMedia message={message} />}
-    {(viewOnceBody || placeholderBody) && <p>{viewOnceBody || placeholderBody}</p>}
+    {(viewOnceBody || placeholderBody) && !isSentMediaPlaceholder && <p>{viewOnceBody || placeholderBody}</p>}
   </>
 }
 
