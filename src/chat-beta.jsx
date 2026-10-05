@@ -6,10 +6,11 @@ const API = (import.meta.env.VITE_API_URL || 'https://backfixio.rotatix.com.br')
 
 async function chatApi(path, options = {}) {
   const token = localStorage.getItem('fixio_token')
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData
   const response = await fetch(`${API}${path}`, {
     ...options,
     headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.body && !isForm ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
@@ -176,10 +177,12 @@ function ChatBetaWorkspace({ openOrder }) {
   const [registerName, setRegisterName] = useState('')
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerDocument, setRegisterDocument] = useState('')
+  const [attachment, setAttachment] = useState(null)
   const [registering, setRegistering] = useState(false)
   const [markingAllRead, setMarkingAllRead] = useState(false)
   const [conversationMenuOpen, setConversationMenuOpen] = useState(false)
   const messagesContainerRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   const loadConversations = async ({ silent = false } = {}) => {
     if (!silent) setApiState('loading')
@@ -322,20 +325,50 @@ function ChatBetaWorkspace({ openOrder }) {
     }
   }
 
+  const chooseAttachment = file => {
+    if (!file) return
+    if (file.size > 64 * 1024 * 1024) {
+      setMessageError('O arquivo é grande demais. O limite é 64 MB.')
+      return
+    }
+    setAttachment(file)
+    setMessageError('')
+  }
+
+  const handlePaste = event => {
+    const files = [...(event.clipboardData?.files || [])]
+    const image = files.find(file => file.type.startsWith('image/')) || [...(event.clipboardData?.items || [])].find(item => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile()
+    if (image) {
+      event.preventDefault()
+      chooseAttachment(image)
+    }
+  }
+
   const sendMessage = async event => {
     event.preventDefault()
     const body = draft.trim()
-    if (!body || !selected || sending) return
+    if ((!body && !attachment) || !selected || sending || selected.status === 'closed') return
     try {
       setSending(true)
       setMessageError('')
-      const result = await chatApi(`/api/conversations/${selected.id}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({ body, senderName: localStorage.getItem('fixio.technician') || 'Assistência Fix.io' }),
-      })
+      const senderName = localStorage.getItem('fixio.technician') || 'Assistência Fix.io'
+      const result = attachment
+        ? await (() => {
+          const form = new FormData()
+          form.append('file', attachment)
+          form.append('caption', body)
+          form.append('senderName', senderName)
+          return chatApi(`/api/conversations/${selected.id}/media`, { method: 'POST', body: form })
+        })()
+        : await chatApi(`/api/conversations/${selected.id}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({ body, senderName }),
+        })
       setMessages(current => [...current, result])
       setConversations(current => current.map(item => String(item.id) === String(selected.id) ? { ...item, last_message: result.body, last_message_at: result.created_at, status: 'open', unread_count: 0 } : item))
       setDraft('')
+      setAttachment(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (exception) {
       setMessageError(exception.message)
     } finally {
@@ -461,9 +494,9 @@ function ChatBetaWorkspace({ openOrder }) {
             {messageError && <div className="chat-beta-message-error"><AlertTriangle size={15} />{messageError}</div>}
           </div>
           <form className="chat-beta-composer" onSubmit={sendMessage}>
-            <div className="chat-beta-composer-tools"><button type="button" className="chat-beta-icon-button" title="Anexar arquivo" disabled><Paperclip size={18} /></button><button type="button" className="chat-beta-icon-button" title="Adicionar imagem" disabled><Image size={18} /></button></div>
-            <textarea value={draft} onChange={event => setDraft(event.target.value)} placeholder={selected.status === 'closed' ? 'Reabra a conversa para responder...' : 'Escreva uma mensagem...'} rows="1" disabled={selected.status === 'closed' || sending} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(event) } }} />
-            <button type="button" className="chat-beta-icon-button" title="Emojis" disabled><Smile size={18} /></button><button className="primary chat-beta-send" disabled={!draft.trim() || selected.status === 'closed' || sending} title="Enviar mensagem">{sending ? <Clock size={16} /> : <Send size={16} />}</button>
+            <div className="chat-beta-composer-tools"><input ref={fileInputRef} className="chat-beta-file-input" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" onChange={event => { chooseAttachment(event.target.files?.[0]); event.target.value = '' }} /><button type="button" className="chat-beta-icon-button" title="Anexar arquivo" disabled={selected.status === 'closed' || sending} onClick={() => fileInputRef.current?.click()}><Paperclip size={18} /></button><button type="button" className="chat-beta-icon-button" title="Adicionar imagem" disabled={selected.status === 'closed' || sending} onClick={() => fileInputRef.current?.click()}><Image size={18} /></button></div>
+            <div className="chat-beta-compose-input"><textarea value={draft} onChange={event => setDraft(event.target.value)} onPaste={handlePaste} placeholder={selected.status === 'closed' ? 'Reabra a conversa para responder...' : 'Escreva uma mensagem ou cole uma captura...'} rows="1" disabled={selected.status === 'closed' || sending} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(event) } }} />{attachment && <span className="chat-beta-attachment"><Paperclip size={13} /><b>{attachment.name || 'Imagem colada'}</b><small>{Math.ceil(attachment.size / 1024)} KB</small><button type="button" title="Remover anexo" onClick={() => setAttachment(null)}><X size={14} /></button></span>}</div>
+            <button type="button" className="chat-beta-icon-button" title="Emojis" disabled><Smile size={18} /></button><button className="primary chat-beta-send" disabled={(!draft.trim() && !attachment) || selected.status === 'closed' || sending} title="Enviar mensagem">{sending ? <Clock size={16} /> : <Send size={16} />}</button>
           </form>
         </> : <div className="chat-beta-empty-thread"><MessageCircle size={38} /><h2>Selecione uma conversa</h2><p>Escolha um atendimento à esquerda para visualizar as mensagens.</p></div>}
       </section>

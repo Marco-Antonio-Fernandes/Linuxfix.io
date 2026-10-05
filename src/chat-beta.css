@@ -103,6 +103,13 @@
 .chat-beta-composer textarea{min-height:35px;max-height:105px;flex:1;resize:none;border:1px solid #dce5e9;border-radius:8px;padding:9px 10px;outline:0;color:#34445c;font:12px 'DM Sans';line-height:1.35}
 .chat-beta-composer textarea:focus{border-color:#80caba;box-shadow:0 0 0 3px #2ca58e16}
 .chat-beta-composer textarea::placeholder{color:#9ca8b3}
+.chat-beta-compose-input{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}
+.chat-beta-file-input{display:none}
+.chat-beta-attachment{display:flex;align-items:center;gap:6px;max-width:100%;padding:5px 8px;border:1px solid #2a5960;border-radius:7px;background:#102b2d;color:#bfe7dd;font-size:10px}
+.chat-beta-attachment b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-beta-attachment small{color:#82999c;font-size:9px}
+.chat-beta-attachment button{display:grid;place-items:center;margin-left:auto;padding:2px;border:0;border-radius:4px;background:transparent;color:#9eb4b3;cursor:pointer}
+.chat-beta-attachment button:hover{background:#173c37;color:#e5fff7}
 .chat-beta-send{width:35px;height:35px;padding:0}
 .chat-beta-details{background:#fff}
 .chat-beta-details-head{border-bottom:1px solid #edf0f3}
