@@ -1,0 +1,25 @@
+.brand-mark {
+  padding: 3px !important;
+  overflow: hidden;
+  background: #8d705c !important;
+  color: transparent !important;
+}
+
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+}
+
+.brand-mark svg {
+  display: none;
+}
+
+.login-brand .brand-mark {
+  background-image: url('./fixio-mark.svg') !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}

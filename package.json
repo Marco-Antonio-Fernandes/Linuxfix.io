@@ -9,7 +9,8 @@
     "build:web": "vite build",
     "build:linux": "tauri build --bundles appimage",
     "build": "npm run build:linux",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.0",

@@ -115,6 +115,17 @@ fn emit_status(app: &tauri::AppHandle, target: &str, state: &str, message: impl 
     })).map_err(|e| e.to_string())
 }
 
+fn emit_whatsapp_notification(app: &tauri::AppHandle, unread_count: u32, title: &str) -> Result<()> {
+    app.emit("desktop-status", json!({
+        "type": "desktop-status",
+        "target": "whatsapp",
+        "state": "notification",
+        "message": "Nova mensagem no WhatsApp Web.",
+        "unreadCount": unread_count,
+        "title": title,
+    })).map_err(|e| e.to_string())
+}
+
 async fn choose_executable() -> Option<PathBuf> {
     rfd::AsyncFileDialog::new().add_filter("Programas Windows", &["exe"])
         .set_title("Escolha o programa da bancada").pick_file().await
@@ -209,6 +220,12 @@ fn main() {
     // and pulsesink from the installed Arch packages.
     append_env_path("GST_PLUGIN_SYSTEM_PATH_1_0", "/usr/lib/gstreamer-1.0");
     append_env_path("GST_PLUGIN_PATH_1_0", "/usr/lib/gstreamer-1.0");
+    // Arch normally exposes PulseAudio compatibility through PipeWire. It is
+    // a more stable GStreamer output path for embedded WebKit media than the
+    // automatic sink selection.
+    if env::var_os("GST_AUDIO_SINK").is_none() && command_exists("pactl") {
+        env::set_var("GST_AUDIO_SINK", "pulsesink");
+    }
     if env::var_os("DISPLAY").is_some() { env::set_var("GDK_BACKEND", "x11"); }
     tauri::Builder::default()
         .manage(UiState::default())

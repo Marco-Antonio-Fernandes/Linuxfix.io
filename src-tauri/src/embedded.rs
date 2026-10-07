@@ -1,10 +1,10 @@
 //! GTK children share the actual content container, including on Wayland.
 //! All widget access stays on GTK's main thread. No detached WhatsApp window.
-use crate::{bench, data_dir, emit_status, snapshot, ContentBounds, Result, UiSnapshot};
-use gtk::prelude::*;
-use std::{cell::{Cell, RefCell}, rc::Rc};
+use crate::{bench, data_dir, emit_status, emit_whatsapp_notification, snapshot, ContentBounds, Result, UiSnapshot};
+use gtk::{glib, prelude::*};
+use std::{cell::{Cell, RefCell}, rc::Rc, time::Duration};
 use tauri::Manager;
-use webkit2gtk::{CookieManagerExt, SettingsExt, WebContextExt, WebViewExt};
+use webkit2gtk::{CookieManagerExt, PermissionRequestExt, SettingsExt, UserMediaPermissionRequestExt, WebContextExt, WebViewExt};
 
 thread_local! {
     static UI: RefCell<Option<NativeUi>> = const { RefCell::new(None) };
@@ -77,37 +77,116 @@ impl NativeUi {
             cookies.set_persistent_storage(&profile.join("cookies").to_string_lossy(),
                 webkit2gtk::CookiePersistentStorage::Text);
         }
-        let view = webkit2gtk::WebView::builder().web_context(&context).build();
+        let policies = webkit2gtk::WebsitePolicies::builder()
+            // WhatsApp resolves/decrypts the voice message asynchronously;
+            // WebKit must allow the resulting media element to start sound.
+            .autoplay(webkit2gtk::AutoplayPolicy::Allow)
+            .build();
+        let view = webkit2gtk::WebView::builder()
+            .web_context(&context)
+            .website_policies(&policies)
+            .is_muted(false)
+            .build();
         if let Some(settings) = WebViewExt::settings(&view) {
             settings.set_enable_javascript(true);
             settings.set_enable_html5_local_storage(true);
-            // Use the installed WebKit's own UA rather than claiming Chrome/Mac.
+            settings.set_enable_media(true);
+            settings.set_enable_media_stream(true);
+            settings.set_enable_mediasource(true);
+            // Voice notes and videos use HTML media. Keeping WebAudio off
+            // avoids a second audio pipeline that can lock WebKitGTK on Linux.
+            settings.set_enable_webaudio(false);
+            settings.set_media_playback_allows_inline(true);
+            settings.set_media_playback_requires_user_gesture(false);
+            // WhatsApp Web hides the login page for the default WebKitGTK/Safari
+            // user agent. Keep the real WebKit engine, but expose a current
+            // Chromium UA so the QR/login application is served.
+            settings.set_user_agent(Some(
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            ));
         }
+        view.connect_permission_request(|_, request| {
+            if let Some(media_request) = request.downcast_ref::<webkit2gtk::UserMediaPermissionRequest>() {
+                // Voice messages need microphone access. A combined audio/video
+                // request is allowed by WebKit as one media session; requests
+                // without audio (for example camera-only) are denied.
+                if media_request.is_for_audio_device() {
+                    request.allow();
+                } else {
+                    request.deny();
+                }
+                return true;
+            }
+            false
+        });
         let frame = frame();
         frame.add(&view);
         if let Some(child) = frame.child() { child.show(); }
         self.overlay.add_overlay(&frame);
         view.show();
         let failed = Rc::new(Cell::new(false));
+        let cancelled = Rc::new(Cell::new(false));
+        let retry_count = Rc::new(Cell::new(0u8));
         let load_failed = failed.clone();
+        let load_cancelled = cancelled.clone();
+        let load_retries = retry_count.clone();
         let handle = app.clone();
         view.connect_load_changed(move |_, event| {
             if event == webkit2gtk::LoadEvent::Started {
                 load_failed.set(false);
+                load_cancelled.set(false);
                 let _ = emit_status(&handle, "whatsapp", "loading", "Carregando WhatsApp Web…");
-            } else if event == webkit2gtk::LoadEvent::Finished && !load_failed.get() {
+            } else if event == webkit2gtk::LoadEvent::Finished && !load_failed.get() && !load_cancelled.get() {
+                load_retries.set(0);
                 let _ = emit_status(&handle, "whatsapp", "ready", "WhatsApp Web na área de atendimento.");
             }
         });
         let load_failed = failed.clone();
+        let load_cancelled = cancelled.clone();
+        let load_retries = retry_count.clone();
         let handle = app.clone();
         let error_frame = frame.clone();
-        view.connect_load_failed(move |_, _, _, error| {
+        let retry_view = view.clone();
+        view.connect_load_failed(move |_, event, failing_uri, error| {
+            if error.matches(webkit2gtk::NetworkError::Cancelled) {
+                // WhatsApp performs redirects and replaces the document while
+                // bootstrapping. WebKitGTK reports that intermediate stop as
+                // "Operation was cancelled"; it is not a terminal failure.
+                if event == webkit2gtk::LoadEvent::Committed {
+                    load_cancelled.set(false);
+                    return true;
+                }
+                let attempt = load_retries.get();
+                if attempt < 2 {
+                    load_retries.set(attempt + 1);
+                    load_cancelled.set(true);
+                    let next_view = retry_view.clone();
+                    glib::timeout_add_local_once(Duration::from_millis(350), move || {
+                        next_view.load_uri("https://web.whatsapp.com/");
+                    });
+                    let _ = emit_status(&handle, "whatsapp", "loading", "Reiniciando o carregamento interno do WhatsApp…");
+                    return true;
+                }
+                load_cancelled.set(false);
+            }
             load_failed.set(true);
             error_frame.hide();
             let _ = emit_status(&handle, "whatsapp", "error",
-                format!("Falha ao carregar o WhatsApp: {error}. Use Tentar novamente."));
+                format!("Falha ao carregar o WhatsApp Web internamente ({failing_uri}): {error}"));
             true
+        });
+        let notification_handle = app.clone();
+        let last_title = Rc::new(RefCell::new(String::new()));
+        let last_title_for_signal = last_title.clone();
+        view.connect_title_notify(move |webview| {
+            let title = webview.title().map(|value| value.to_string()).unwrap_or_default();
+            if *last_title_for_signal.borrow() == title { return; }
+            *last_title_for_signal.borrow_mut() = title.clone();
+            let unread_count = title.trim().strip_prefix('(')
+                .and_then(|value| value.split_once(')'))
+                .and_then(|(count, _)| count.trim().parse::<u32>().ok())
+                .unwrap_or(0);
+            let _ = emit_whatsapp_notification(&notification_handle, unread_count, &title);
         });
         let terminated = failed.clone();
         let handle = app.clone();
@@ -116,7 +195,7 @@ impl NativeUi {
             terminated.set(true);
             error_frame.hide();
             let _ = emit_status(&handle, "whatsapp", "error",
-                format!("O processo do WhatsApp foi encerrado ({reason:?}). Use Tentar novamente."));
+                format!("O processo interno do WhatsApp foi encerrado ({reason:?})."));
         });
         // Never create a top-level window for target=_blank/window.open.
         view.connect_create(|_, _| None);

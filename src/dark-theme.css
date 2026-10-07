@@ -26,3 +26,112 @@ input:hover,select:hover,textarea:hover{background-color:#101c22!important;borde
 .bar-column small,.rank-info small,.bar-chart small{color:#82999c}.bar-pair .income{background:#31aa91}.bar-pair .expense{background:#d79a4a}.ranking-list .rank{border-color:#1e3037}.rank-info>div:first-child,.rank-info b{color:#dce7e8}.rank-number.green{background:#123c35;color:#72d5b9}.rank-number.yellow{background:#3a2f16;color:#e3b65d}.rank-number.blue{background:#163348;color:#75b6e5}.rank-number.purple{background:#302445;color:#be9be5}
 .category-list>span{border-color:#2a3d45;background:#101b21;color:#c2dcda}.category-list small{color:#82999c}
 .dashboard-finance-chart .grid-lines line{stroke:#263941}.dashboard-finance-chart .chart-y,.dashboard-finance-chart .chart-x{color:#82999c}.chart-summary small{color:#82999c}.chart-summary b{color:#e0ecea}.chart-summary .projection{background:#12342f;color:#72d5b9}
+
+/* Nova OS: remove as últimas superfícies claras do formulário de entrada. */
+.register-card.polished-form .form-title{background:#111a21!important;color:#dce7e8!important}
+.register-card.polished-form .form-title>div{background:transparent!important;color:#edf6f4!important}
+.register-card.polished-form .form-title h2{color:#edf6f4!important}
+.register-card.polished-form .form-title p{color:#82999c!important}
+.register-card.polished-form .quick-actions button{background:#111f26;border-color:#2b4048;color:#a9bdbc}
+.register-card.polished-form .quick-actions button.active{background:#123c35;border-color:#328e7d;color:#78dcc0}
+.register-card.polished-form .intake-evidence{border-color:#285247;background:#102923}
+.register-card.polished-form .intake-evidence h3{color:#dcece8}
+.register-card.polished-form .intake-evidence p{color:#82999c}
+.register-card.polished-form .intake-checks label{border-color:#293c44;background:#101b21;color:#c5d4d2}
+.register-card.polished-form .photo-upload{border-color:#2c6960;background:#111f26;color:#c5d8d5}
+.register-card.polished-form .photo-upload input,
+.register-card.polished-form input[name="intakePhotoTitle"]{border-color:#2a3d45;background:#0b1319;color:#e1edeb}
+.register-card.polished-form .photo-upload input::file-selector-button{background:#19483d;color:#7bdabe}
+.register-card.polished-form .intake-evidence .form-field input{background:#0b1319}
+.register-card.polished-form select option{background:#111a21;color:#e1edeb}
+
+/* Telas legadas: OS, login e área do cliente seguem a mesma leitura escura. */
+.order-progress,.order-extras,.info-panel,.summary-card{background:#111a21!important;border-color:#263941!important;color:#dce7e8}
+.order-progress>div:first-child{color:#dce7e8}
+.order-progress>div:first-child span{color:#82999c}
+.progress-track{background:#203039}
+.progress-stages button{color:#87999c}
+.progress-stages i{background:#1c2a31;color:#8ca0a1}
+.progress-stages button.done{color:#75d6b9}
+.progress-stages button.done i{background:#17483e;color:#75d6b9}
+.info-panel h2,.order-extras h2,.summary-card h2{color:#edf6f4!important}
+.info-grid b,.order-timeline span,.summary-card b{color:#dce8e5!important}
+.info-grid span,.info-grid small,.order-timeline small,.extras-grid>form>small{color:#82999c!important}
+.order-timeline{border-color:#294047}
+.order-timeline i{border-color:#111a21;background:#2aa98d}
+.media-preview{color:#c1cfce}
+.media-preview img,.media-preview video{background:#0b1319;border-color:#293c44}
+.media-preview small{color:#82999c}
+.media-preview.media-link{border-color:#2a514b;background:#102923;color:#72d5b9}
+.extras-grid>form{background:#101b21;border-color:#293c44}
+.extras-grid>form>b{color:#dce8e5}
+.extras-grid input,.extras-grid select,.extras-grid textarea,.media-form input:not([type=file]),.media-form select,.annotation-form textarea{background:#0b1319!important;border-color:#2a3d45!important;color:#e1edeb!important}
+.media-file-drop{background:#102923;border-color:#2c6960;color:#74d8bb}
+.media-file-drop b{color:#c5d8d5}
+.media-file-drop small{color:#82999c}
+
+/* Login: o cartão novo não pode voltar ao branco do template original. */
+.login-card-new{background:#111a21!important;border-color:#293c44!important;color:#dce7e8!important;box-shadow:0 25px 70px #0008}
+.login-card-heading h2{color:#edf6f4!important}
+.login-card-heading p,.login-legal,.field-hint{color:#84999c!important}
+.login-fields .form-field>span{color:#b8cbc8!important}
+.login-fields .form-field input,.login-fields .password-input{background:#0b1319!important;border-color:#2a3d45!important;color:#e1edeb!important}
+.login-fields .form-field input::placeholder{color:#71858b!important}
+.login-switch button{background:#101b21!important;border-color:#293c44!important;border-bottom-color:#293c44!important;color:#a9bdbc}
+.login-switch button span{color:#c2d2d1}
+.login-switch button small{color:#82999c}
+.login-switch button.active{background:#123c35!important;border-color:#328e7d!important;border-bottom-color:#328e7d!important}
+.login-switch button.active span,.login-switch button.active svg{color:#78dcc0}
+.login-back{color:#9bb0b0}
+.test-mode-note>span{background:#17483e;color:#72d5b9}
+.diagnosis small{color:#d7c18e}
+.extras-grid .check{color:#b8cbc8}
+
+/* Portal do cliente: simples, sem os cards brancos antigos. */
+.customer-portal,.customer-portal-container{background:radial-gradient(circle at 85% 0,#12322f 0,transparent 30%),#080d12!important;color:#dce7e8}
+.customer-portal .portal-brand{color:#eef7f4}
+.customer-portal .portal-brand span{color:#62d5b4}
+.customer-hero h1{color:#edf6f4!important}
+.customer-orders,.customer-detail{background:#111a21!important;border-color:#263941!important;color:#dce7e8}
+.customer-orders h2,.customer-device h2{color:#edf6f4!important}
+.customer-orders .panel-head{border-color:#263941}
+.customer-order{border-color:#263941;background:transparent;color:#9bb0b0}
+.customer-order b{color:#dce8e5}
+.customer-order.active{background:#123c35}
+.customer-order.active b{color:#78dcc0}
+.customer-status{background:#123c35;color:#72d5b9}
+.customer-progress{background:#102923;border-color:#285247}
+.customer-progress-head{color:#dce8e5}
+.customer-progress-head span,.customer-progress-labels span{color:#82999c}
+.customer-progress-track{background:#203039}
+.customer-section{border-color:#263941}
+.customer-section-title h3{color:#edf6f4}
+.customer-section-title p,.customer-timeline-item em{color:#82999c}
+.customer-timeline{border-color:#294047}
+.customer-timeline i{box-shadow:0 0 0 3px #111a21;background:#385057}
+.customer-timeline i.current{background:#2aa98d;box-shadow:0 0 0 3px #123c35}
+.customer-timeline-item{color:#dce7e5}
+.customer-timeline-item>svg{color:#82999c}
+.customer-timeline-item b{color:#dce8e5}
+.customer-timeline-item small{color:#82999c}
+.customer-media-grid>a,.customer-video{color:#b7c9c8}
+.customer-media-grid img,.customer-media-grid video{background:#0b1319}
+.customer-video-link{background:#102923;border-color:#285247;color:#72d5b9!important}
+.customer-chat{border-color:#263941}
+.customer-chat .panel-head{border-color:#263941}
+.customer-chat .panel-head h2{color:#edf6f4}
+.customer-chat .panel-head p{color:#82999c}
+.customer-messages{background:#0d171d}
+.chat-bubble{background:#111f26;border-color:#293c44;color:#dce7e5}
+.chat-bubble.admin{background:#123c35;border-color:#286458}
+.chat-bubble p{color:#dce8e5}
+.chat-bubble small{color:#82999c}
+.chat-compose{background:#111a21;border-color:#263941}
+.chat-compose textarea{background:#0b1319!important;border-color:#2a3d45!important;color:#e1edeb!important}
+.portal-exit{background:#111f26;border-color:#2b4048;color:#bdd0cf}
+.portal-notice{background:#302718;border-color:#654c22;color:#e1b963}
+.portal-back-button{background:#111f26;border-color:#2b4048;color:#bdd0cf;box-shadow:0 4px 16px #0006}
+.portal-media{border-color:#263941}
+.portal-media h2{color:#edf6f4}
+.portal-media-grid a{background:#102923;border-color:#285247;color:#72d5b9}
+.customer-portal footer{color:#82999c}

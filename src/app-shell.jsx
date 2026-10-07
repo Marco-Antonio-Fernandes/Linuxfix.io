@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Bell, BellRing, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileCode2, LayoutDashboard, Laptop, LogOut, Menu, MessageCircle, MonitorPlay, PanelLeftClose, PanelLeftOpen, Plus, Share2, ShoppingCart, Users, X } from 'lucide-react'
+import { BellRing, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileCode2, CircuitBoard, LayoutDashboard, Laptop, LogOut, Menu, MessageCircle, MonitorPlay, PanelLeftClose, PanelLeftOpen, Plus, Share2, ShoppingCart, Users, X } from 'lucide-react'
 import './app-shell.css'
 import fixioMark from './fixio-mark.svg'
 
@@ -10,8 +10,9 @@ const navigation = [
   ['orders', ClipboardList, 'Ordens de serviço'],
   ['finance', CircleDollarSign, 'Financeiro'],
   ['inventory', Boxes, 'Estoque'],
-  ['whatsapp', MessageCircle, 'WhatsApp'],
+  ['whatsapp', MessageCircle, 'WhatsApp Web'],
   ['techunion', MonitorPlay, 'Bancada'],
+  ['boardview', CircuitBoard, 'Mapa de placa'],
   ['autounattend', FileCode2, 'Auto Atende'],
 ]
 
@@ -151,8 +152,8 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
             onClick={() => go('techunion')}>
             <MonitorPlay size={20}/>
           </button>
-          <button type="button" className={notifications?.unread_count ? 'topbar-message has-unread' : 'topbar-message'} onClick={() => { go('whatsapp'); onOpenWhatsApp() }} title="Abrir WhatsApp">
-            <Bell size={17}/><span>WhatsApp</span>{notifications?.unread_count > 0 && <b>{notifications.unread_count > 99 ? '99+' : notifications.unread_count}</b>}
+          <button type="button" className={notifications?.unread_count ? 'topbar-message has-unread' : 'topbar-message'} onClick={() => { go('whatsapp'); onOpenWhatsApp() }} title="Abrir WhatsApp" aria-label="Abrir WhatsApp">
+            <MessageCircle size={18} aria-hidden="true" />{notifications?.unread_count > 0 && <b>{notifications.unread_count > 99 ? '99+' : notifications.unread_count}</b>}
           </button>
           {financeNotifications?.pending_count > 0 && <button type="button" className="topbar-message finance-alert-message has-unread" onClick={() => { go('finance'); onOpenFinance?.() }} title="Abrir Pix pendentes">
             <BellRing size={17}/><span>Pix pendente</span><b>{financeNotifications.pending_count > 99 ? '99+' : financeNotifications.pending_count}</b>
@@ -167,7 +168,7 @@ export function AppShell({ page, setPage, children, notifications, financeNotifi
           <span className="pix-toast-icon"><BellRing size={17} /></span><span><b>Novo Pix identificado</b><small>{pixToast.direction === 'in' ? 'Entrada' : 'Saída'} de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(pixToast.amount_cents) || 0) / 100)} · classifique no Financeiro</small></span><X size={15} onClick={event => { event.stopPropagation(); setPixToast(null) }} />
         </button>}
       </header>
-      <main className={`content${page === 'whatsapp' || page === 'chat-beta' ? ' chat-beta-content' : page === 'techunion' ? ' tech-union-content' : ''}`}>{children}</main>
+      <main className={`content${page === 'whatsapp' || page === 'chat-beta' ? ' whatsapp-module-content' : page === 'techunion' ? ' tech-union-content' : page === 'boardview' ? ' boardview-content' : ''}`}>{children}</main>
     </div>
   </div>
 }
