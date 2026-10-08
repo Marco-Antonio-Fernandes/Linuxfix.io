@@ -11,6 +11,13 @@ button.danger:hover:not(:disabled),.danger:hover:not(:disabled),.table-action.da
 button.outline:hover:not(:disabled),button.filter:hover:not(:disabled),.outline:hover:not(:disabled),.filter:hover:not(:disabled){background-color:#173039;color:#e0f5ef;border-color:#3e9f8b}
 button.icon-button:hover:not(:disabled),.icon-button:hover:not(:disabled){background-color:#17272e;color:#e5f3ef;border-color:#2d4b52}
 input:hover,select:hover,textarea:hover{background-color:#101c22!important;border-color:#3a5960!important;color:#e2edeb}
+.register-card.polished-form .form-field input:hover,.register-card.polished-form .form-field select:hover,.register-card.polished-form .form-field textarea:hover,.register-card.polished-form .form-field input:focus,.register-card.polished-form .form-field select:focus,.register-card.polished-form .form-field textarea:focus{background:#101c22!important;border-color:#3a5960!important;color:#e2edeb!important}
+.register-card.polished-form input:not([type=checkbox]):not([type=radio]):hover,.register-card.polished-form select:hover,.register-card.polished-form textarea:hover,.register-card.polished-form input:not([type=checkbox]):not([type=radio]):focus,.register-card.polished-form select:focus,.register-card.polished-form textarea:focus{background:#101c22!important;border-color:#3a5960!important;color:#e2edeb!important}
+.register-card.polished-form input[type=file]{background:#0b1319!important;border-color:#2a3d45!important;color:#e1edeb!important}
+.register-card.polished-form .form-field input::placeholder,.register-card.polished-form .form-field textarea::placeholder{color:#71858b!important}
+.register-card.polished-form .form-field select option{background:#111a21!important;color:#e2edeb!important}
+.register-card.polished-form .intake-checks label:hover{background:#14302d!important;border-color:#357e6d!important;color:#dcefeb!important}
+.register-card.polished-form .photo-upload:hover{background:#14302d!important;border-color:#357e6d!important;color:#dcefeb!important}
 
 /* Financeiro: elimina superfícies brancas dos cartões e campos próprios do módulo. */
 .pix-connection-card,.pix-inbox-panel,.finance-categories-panel,.cash-panel,.cash-history,.dashboard-finance-report .panel{background:#111a21!important;border-color:#1f3038!important;color:#dce7e8}
@@ -88,7 +95,9 @@ input:hover,select:hover,textarea:hover{background-color:#101c22!important;borde
 .extras-grid .check{color:#b8cbc8}
 
 /* Portal do cliente: simples, sem os cards brancos antigos. */
-.customer-portal,.customer-portal-container{background:radial-gradient(circle at 85% 0,#12322f 0,transparent 30%),#080d12!important;color:#dce7e8}
+.customer-portal,.customer-portal-container{background:#080d12!important;color:#dce7e8}
+.customer-portal .portal-card,.customer-portal .panel{background:#111a21!important;border-color:#263941!important;color:#dce7e8}
+.customer-portal .muted,.customer-portal .eyebrow{color:#82999c!important}
 .customer-portal .portal-brand{color:#eef7f4}
 .customer-portal .portal-brand span{color:#62d5b4}
 .customer-hero h1{color:#edf6f4!important}
@@ -111,6 +120,7 @@ input:hover,select:hover,textarea:hover{background-color:#101c22!important;borde
 .customer-timeline i{box-shadow:0 0 0 3px #111a21;background:#385057}
 .customer-timeline i.current{background:#2aa98d;box-shadow:0 0 0 3px #123c35}
 .customer-timeline-item{color:#dce7e5}
+.customer-timeline-item:hover,.customer-timeline-item:focus-visible{background:#17272e!important;color:#e5f3ef!important;outline:none}
 .customer-timeline-item>svg{color:#82999c}
 .customer-timeline-item b{color:#dce8e5}
 .customer-timeline-item small{color:#82999c}

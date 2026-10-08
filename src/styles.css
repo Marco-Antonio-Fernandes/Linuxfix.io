@@ -270,3 +270,9 @@ header{background:#0d151b;border-color:#1d2c34}.breadcrumb{color:#82969c}.breadc
 .order-timeline span>.timeline-entry-description,.timeline-item span>.timeline-entry-description,.customer-timeline-item span>.timeline-entry-description{width:100%}
 .order-timeline span>.timeline-entry-description em,.timeline-item span>.timeline-entry-description em,.customer-timeline-item span>.timeline-entry-description em{display:block}
 .order-timeline span>.timeline-entry-description em,.timeline-item span>.timeline-entry-description em,.customer-timeline-item span>.timeline-entry-description em{color:#9bb0b0}
+.customer-grid-link{grid-template-columns:minmax(0,1fr)}
+.customer-grid-link .customer-timeline-item{cursor:default}
+.timeline-entry-content{display:grid;gap:4px;color:inherit;font-size:12px;line-height:1.4}
+.timeline-entry-content>.timeline-entry-description{width:100%}
+.portal-total{margin-top:20px}
+.portal-disclaimer{font-size:11px}

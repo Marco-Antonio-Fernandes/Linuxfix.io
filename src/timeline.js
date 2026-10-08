@@ -17,9 +17,13 @@ export function mergeTimelineNotes(items){
     const item=source[index]
     if(item.event_type==='status_changed'){
       const next=source[index+1]
-      if(next?.event_type==='status_note'){
+      if(next?.event_type==='status_note'||next?.event_type==='note'){
         const parsed=splitTimelineDescription(next.description)
-        const note=parsed.title===item.description?(parsed.note||''):parsed.note||parsed.title
+        const note=parsed.title===item.description
+          ?(parsed.note||'')
+          :next.event_type==='note'
+            ?String(next.description||'').trim()
+            :(parsed.note||parsed.title)
         merged.push({...item,description:timelineDescription(item.description,note)})
         index++
         continue
@@ -27,17 +31,27 @@ export function mergeTimelineNotes(items){
       merged.push({...item})
       continue
     }
-    if(item.event_type==='status_note'){
+    if(item.event_type==='status_note'||item.event_type==='note'){
       const parsed=splitTimelineDescription(item.description)
       const next=source[index+1]
       if(next?.event_type==='status_changed'){
-        merged.push({...next,description:timelineDescription(next.description,parsed.note||parsed.title)})
+        const note=parsed.title===next.description
+          ?(parsed.note||'')
+          :item.event_type==='note'
+            ?String(item.description||'').trim()
+            :(parsed.note||parsed.title)
+        merged.push({...next,description:timelineDescription(next.description,note)})
         index++
         continue
       }
       const previous=merged[merged.length-1]
       if(previous?.event_type==='status_changed'){
-        merged[merged.length-1]={...previous,description:timelineDescription(previous.description,parsed.note||parsed.title)}
+        const note=parsed.title===previous.description
+          ?(parsed.note||'')
+          :item.event_type==='note'
+            ?String(item.description||'').trim()
+            :(parsed.note||parsed.title)
+        merged[merged.length-1]={...previous,description:timelineDescription(previous.description,note)}
         continue
       }
       merged.push({...item,description:timelineDescription('Nota',parsed.note||parsed.title)})
